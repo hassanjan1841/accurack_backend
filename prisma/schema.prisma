@@ -206,7 +206,7 @@ model Customer {
   state                 String?
   city                  String?
   zipCode               String?
-  phoneNumber           String            @unique
+  phoneNumber           String
   telephoneNumber       String?
   customerMail          String?
   website               String?
@@ -223,6 +223,8 @@ model Customer {
   invoices              Invoice[]
   sales                 Sales[]
   orderProcessing       OrderProcessing[]
+
+  @@unique([phoneNumber, clientId])
 }
 
 model Sales {
