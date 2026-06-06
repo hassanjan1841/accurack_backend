@@ -394,8 +394,9 @@ export class CustomerBalanceService {
 
   async getCustomerBalance(customerId: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     const customer = await prisma.customer.findFirst({
-      where: { id: customerId },
+      where: { id: customerId, clientId },
     });
 
     if (!customer) {
@@ -475,9 +476,10 @@ export class CustomerBalanceService {
     tx?: any,
   ) {
     const prisma = tx || (await this.tenantContext.getPrismaClient());
-    // Try to find existing customer by phone
-    let customer = await prisma.customer.findUnique({
-      where: { phoneNumber },
+    // Try to find existing customer by phone (scoped to this tenant)
+    const scopedClientId = customerData?.clientId;
+    let customer = await prisma.customer.findFirst({
+      where: { phoneNumber, ...(scopedClientId && { clientId: scopedClientId }) },
     });
 
     if (!customer && customerData) {

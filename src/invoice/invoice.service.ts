@@ -7,6 +7,7 @@ import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 interface User {
   id: string;
+  clientId?: string;
   businessId: string;
   business: {
     logoUrl?: string;
@@ -152,9 +153,9 @@ export class InvoiceService {
 
     const { logoUrl } = user.business || {};
 
-    // Fetch sale with related data
-    const sale = await prisma.sales.findUnique({
-      where: { id: saleId },
+    // Fetch sale with related data (scoped to this tenant)
+    const sale = await prisma.sales.findFirst({
+      where: { id: saleId, clientId: (user as any).clientId },
       include: {
         customer: true,
         saleItems: true,
@@ -277,9 +278,9 @@ export class InvoiceService {
       throw new Error('No valid fields provided for update.');
     }
 
-    // Check if invoice exists and is not deleted
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+    // Check if invoice exists and is not deleted (scoped to this tenant)
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, clientId: user.clientId },
     });
     if (!invoice || invoice.deletedAt) {
       throw new NotFoundException('Invoice not found');
@@ -295,9 +296,10 @@ export class InvoiceService {
 
   async getInvoice(id: string): Promise<Invoice> {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
 
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
+    const invoice = await prisma.invoice.findFirst({
+      where: { id, clientId },
       include: {
         sale: {
           include: {
@@ -421,7 +423,8 @@ export class InvoiceService {
     id: string,
   ): Promise<{ success: boolean; message: string }> {
     const prisma = await this.tenantContext.getPrismaClient();
-    const invoice = await prisma.invoice.findUnique({ where: { id } });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const invoice = await prisma.invoice.findFirst({ where: { id, clientId } });
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
     }

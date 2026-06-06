@@ -34,20 +34,28 @@ export class TaxService {
   }
   async getAllTaxTypes() {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.taxType.findMany();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.taxType.findMany({ where: { clientId } });
   }
   async getTaxTypeById(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    const found = await prisma.taxType.findUnique({ where: { id } });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxType.findFirst({ where: { id, clientId } });
     if (!found) throw new NotFoundException('TaxType not found');
     return found;
   }
   async updateTaxType(id: string, dto: UpdateTaxTypeDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxType.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxType not found');
     return prisma.taxType.update({ where: { id }, data: dto });
   }
   async deleteTaxType(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxType.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxType not found');
     return prisma.taxType.delete({ where: { id } });
   }
 
@@ -59,20 +67,28 @@ export class TaxService {
   }
   async getAllTaxCodes() {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.taxCode.findMany();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.taxCode.findMany({ where: { clientId } });
   }
   async getTaxCodeById(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    const found = await prisma.taxCode.findUnique({ where: { id } });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxCode.findFirst({ where: { id, clientId } });
     if (!found) throw new NotFoundException('TaxCode not found');
     return found;
   }
   async updateTaxCode(id: string, dto: UpdateTaxCodeDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxCode.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxCode not found');
     return prisma.taxCode.update({ where: { id }, data: dto });
   }
   async deleteTaxCode(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxCode.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxCode not found');
     return prisma.taxCode.delete({ where: { id } });
   }
 
@@ -84,20 +100,28 @@ export class TaxService {
   }
   async getAllRegions() {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.region.findMany();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.region.findMany({ where: { clientId } });
   }
   async getRegionById(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    const found = await prisma.region.findUnique({ where: { id } });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.region.findFirst({ where: { id, clientId } });
     if (!found) throw new NotFoundException('Region not found');
     return found;
   }
   async updateRegion(id: string, dto: UpdateRegionDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.region.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('Region not found');
     return prisma.region.update({ where: { id }, data: dto });
   }
   async deleteRegion(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.region.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('Region not found');
     return prisma.region.delete({ where: { id } });
   }
 
@@ -110,8 +134,10 @@ export class TaxService {
 
   async getAllTaxRates() {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     // Fetch all tax rates and their assignments, including entity
     const taxRates = await prisma.taxRate.findMany({
+      where: { clientId },
       select: {
         id: true,
         rate: true,
@@ -143,9 +169,10 @@ export class TaxService {
 
   async getTaxRateById(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     // Fetch tax rate and assignments, including entity
-    const found = await prisma.taxRate.findUnique({
-      where: { id },
+    const found = await prisma.taxRate.findFirst({
+      where: { id, clientId },
       select: {
         id: true,
         rate: true,
@@ -194,12 +221,18 @@ export class TaxService {
 
   async updateTaxRate(id: string, dto: UpdateTaxRateDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxRate.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxRate not found');
     return prisma.taxRate.update({ where: { id }, data: dto });
   }
 
 
   async deleteTaxRate(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxRate.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxRate not found');
     return prisma.taxRate.delete({ where: { id } });
   }
 
@@ -212,22 +245,30 @@ export class TaxService {
 
   async getAllTaxAssignments() {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.taxAssignment.findMany();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.taxAssignment.findMany({ where: { clientId } });
   }
 
 
   async getTaxAssignmentById(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    const found = await prisma.taxAssignment.findUnique({ where: { id } });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxAssignment.findFirst({ where: { id, clientId } });
     if (!found) throw new NotFoundException('TaxAssignment not found');
     return found;
   }
   async updateTaxAssignment(id: string, dto: UpdateTaxAssignmentDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxAssignment.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxAssignment not found');
     return prisma.taxAssignment.update({ where: { id }, data: dto });
   }
   async deleteTaxAssignment(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.taxAssignment.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('TaxAssignment not found');
     return prisma.taxAssignment.delete({ where: { id } });
   }
 
@@ -293,16 +334,17 @@ export class TaxService {
    */
   async updateTaxBundle(taxCodeId: string, dto: UpdateTaxBundleDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    // Find TaxCode and related TaxType/TaxRate
-    const taxCode = await prisma.taxCode.findUnique({
-      where: { id: taxCodeId },
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    // Find TaxCode and related TaxType/TaxRate (scoped to this tenant)
+    const taxCode = await prisma.taxCode.findFirst({
+      where: { id: taxCodeId, clientId },
     });
     if (!taxCode) throw new NotFoundException('TaxCode not found');
-    const taxType = await prisma.taxType.findUnique({
-      where: { id: taxCode.taxTypeId },
+    const taxType = await prisma.taxType.findFirst({
+      where: { id: taxCode.taxTypeId, clientId },
     });
     if (!taxType) throw new NotFoundException('TaxType not found');
-    const taxRate = await prisma.taxRate.findFirst({ where: { taxCodeId } });
+    const taxRate = await prisma.taxRate.findFirst({ where: { taxCodeId, clientId } });
     if (!taxRate) throw new NotFoundException('TaxRate not found');
     try {
       return await prisma.$transaction(async (tx) => {
@@ -337,16 +379,17 @@ export class TaxService {
    */
   async deleteTaxBundle(taxCodeId: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    // Find TaxCode and related TaxType/TaxRate
-    const taxCode = await prisma.taxCode.findUnique({
-      where: { id: taxCodeId },
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    // Find TaxCode and related TaxType/TaxRate (scoped to this tenant)
+    const taxCode = await prisma.taxCode.findFirst({
+      where: { id: taxCodeId, clientId },
     });
     if (!taxCode) throw new NotFoundException('TaxCode not found');
-    const taxType = await prisma.taxType.findUnique({
-      where: { id: taxCode.taxTypeId },
+    const taxType = await prisma.taxType.findFirst({
+      where: { id: taxCode.taxTypeId, clientId },
     });
     if (!taxType) throw new NotFoundException('TaxType not found');
-    const taxRate = await prisma.taxRate.findFirst({ where: { taxCodeId } });
+    const taxRate = await prisma.taxRate.findFirst({ where: { taxCodeId, clientId } });
     if (!taxRate) throw new NotFoundException('TaxRate not found');
     try {
       return await prisma.$transaction(async (tx) => {

@@ -15,11 +15,13 @@ export class CategoryService {
 
   async searchCategories(query: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     if (!query || query.trim() === '') {
       return [];
     }
     return prisma.category.findMany({
       where: {
+        clientId,
         OR: [
           { name: { contains: query, mode: 'insensitive' } },
           { code: { contains: query, mode: 'insensitive' } },
@@ -35,7 +37,7 @@ export class CategoryService {
     // Check for duplicate name or code
 
     const existing = await prisma.category.findFirst({
-      where: { OR: [{ name: dto.name, code: dto.code }] },
+      where: { clientId, OR: [{ name: dto.name }, { code: dto.code }] },
     });
 
     if (existing)
@@ -47,30 +49,39 @@ export class CategoryService {
 
   async getAllCategories() {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.category.findMany();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.category.findMany({ where: { clientId } });
   }
 
   async getCategoryById(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    const found = await prisma.category.findUnique({ where: { id } });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.category.findFirst({ where: { id, clientId } });
     if (!found) throw new NotFoundException('Category not found');
     return found;
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.category.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('Category not found');
     return prisma.category.update({ where: { id }, data: dto });
   }
 
   async deleteCategory(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const found = await prisma.category.findFirst({ where: { id, clientId } });
+    if (!found) throw new NotFoundException('Category not found');
     return prisma.category.delete({ where: { id } });
   }
 
   async getProductsByCategory(id: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    const category = await prisma.category.findUnique({
-      where: { id },
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const category = await prisma.category.findFirst({
+      where: { id, clientId },
       include: { products: true },
     });
     if (!category) throw new NotFoundException('Category not found');
@@ -79,7 +90,9 @@ export class CategoryService {
 
   async findSimilarCategories(categoryName: string, threshold: number = 0.3) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     const categories = await prisma.category.findMany({
+      where: { clientId },
       select: { name: true },
     });
 
@@ -94,9 +107,10 @@ export class CategoryService {
   ): Promise<{ id: string; name: string }> {
     const prisma = await this.tenantContext.getPrismaClient();
 
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     // Try exact match first
     let category = await prisma.category.findFirst({
-      where: { name: { equals: categoryName, mode: 'insensitive' } },
+      where: { clientId, name: { equals: categoryName, mode: 'insensitive' } },
     });
 
     if (category) {
@@ -119,7 +133,6 @@ export class CategoryService {
     }
 
     // No match found - create new category
-    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     category = await prisma.category.create({
       data: { name: categoryName, clientId },
     });

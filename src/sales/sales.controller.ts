@@ -178,6 +178,7 @@ export class SalesController extends BaseSaleController {
           {
             id: req.user.id,
             role: req.user.role,
+            clientId: req.user.clientId,
             stores: req.user.stores || [],
           },
           req.user.tenantId,

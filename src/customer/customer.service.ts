@@ -23,9 +23,9 @@ export class CustomerService {
   async createCustomer(dto: CreateCustomerDto) {
     const prisma = await this.tenantContext.getPrismaClient();
     const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
-    // Check if customer already exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { phoneNumber: dto.phoneNumber },
+    // Check if customer already exists within this tenant
+    const existingCustomer = await prisma.customer.findFirst({
+      where: { phoneNumber: dto.phoneNumber, clientId },
     });
 
     if (existingCustomer) {
@@ -59,8 +59,9 @@ export class CustomerService {
 
   async findCustomerByPhone(phoneNumber: string) {
     const prisma = await this.tenantContext.getPrismaClient();
-    return await prisma.customer.findUnique({
-      where: { phoneNumber },
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return await prisma.customer.findFirst({
+      where: { phoneNumber, clientId },
       include: {
         balanceSheets: {
           orderBy: { createdAt: 'desc' },
@@ -72,8 +73,9 @@ export class CustomerService {
 
   async updateCustomer(customerId: string, dto: UpdateCustomerDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, clientId },
     });
     if (!customer) {
       throw new NotFoundException('Customer not found');
@@ -94,10 +96,11 @@ export class CustomerService {
 
   async deleteCustomer(customerId: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
 
-    // First check if customer exists
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
+    // First check if customer exists and belongs to this tenant
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, clientId },
     });
 
     if (!customer) {
@@ -106,7 +109,7 @@ export class CustomerService {
 
     // Check if customer has any associated sales
     const salesCount = await prisma.sales.count({
-      where: { customerId: customerId },
+      where: { customerId, clientId },
     });
 
     if (salesCount > 0) {
@@ -117,7 +120,7 @@ export class CustomerService {
 
     // Delete related balance sheets first (due to foreign key constraints)
     await prisma.balanceSheet.deleteMany({
-      where: { customerId: customerId },
+      where: { customerId, clientId },
     });
 
     // Delete the customer
@@ -151,6 +154,7 @@ export class CustomerService {
     if (search && search.trim() !== '') {
       const where: any = {
         storeId,
+        clientId: user.clientId,
         OR: [
           { customerName: { contains: search, mode: 'insensitive' } },
           { phoneNumber: { contains: search, mode: 'insensitive' } },
@@ -180,7 +184,7 @@ export class CustomerService {
 
     // Default: paginated fetch
     const skip = (page - 1) * limit;
-    const where: any = { storeId };
+    const where: any = { storeId, clientId: user.clientId };
     const [customers, total] = await Promise.all([
       prisma.customer.findMany({
         where,
@@ -212,8 +216,9 @@ export class CustomerService {
 
   async getCustomerBalance(customerId: string) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     const customer = await prisma.customer.findFirst({
-      where: { id: customerId },
+      where: { id: customerId, clientId },
     });
 
     if (!customer) {
