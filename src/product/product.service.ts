@@ -737,13 +737,13 @@ export class ProductService {
 
     let where: any = {};
 
+    where.clientId = user.clientId;
     if (user.role !== 'super_admin') {
       if (storeId) {
         where.storeId = storeId;
       } else if (user.storeId) {
         where.storeId = user.storeId;
       }
-      where.clientId = user.clientId;
     } else if (storeId) {
       where.storeId = storeId;
     }
@@ -2737,15 +2737,12 @@ export class ProductService {
     };
 
     // Handle store and client filtering based on user role and permissions
+    where.clientId = user.clientId;
     if (user.role === 'super_admin') {
-      // Super admin can search across all stores
       if (storeId) {
         where.storeId = storeId;
       }
     } else {
-      // Regular users are restricted to their client and stores
-      where.clientId = user.clientId;
-
       if (storeId) {
         // Check if user has access to the specified store
         const hasStoreAccess = user.stores?.some(
@@ -2842,15 +2839,12 @@ export class ProductService {
     }
 
     // Handle store and client filtering based on user role and permissions
+    where.clientId = user.clientId;
     if (user.role === 'super_admin') {
-      // Super admin can search across all stores
       if (options.storeId) {
         where.storeId = options.storeId;
       }
     } else {
-      // Regular users are restricted to their client and stores
-      where.clientId = user.clientId;
-
       if (options.storeId) {
         // Check if user has access to the specified store
         const hasStoreAccess = user.stores?.some(
@@ -3122,11 +3116,9 @@ export class ProductService {
 
     // Build where clause based on user permissions
     let where: any = {};
-    if (user.role !== 'super_admin') {
-      where.clientId = user.clientId;
-      if (user.storeId) {
-        where.storeId = user.storeId;
-      }
+    where.clientId = user.clientId;
+    if (user.role !== 'super_admin' && user.storeId) {
+      where.storeId = user.storeId;
     }
 
     // Find the product containing the variant with the given PLU/UPC
@@ -3232,11 +3224,9 @@ export class ProductService {
 
     // Build where clause based on user permissions
     let where: any = {};
-    if (user.role !== 'super_admin') {
-      where.clientId = user.clientId;
-      if (user.storeId) {
-        where.storeId = user.storeId;
-      }
+    where.clientId = user.clientId;
+    if (user.role !== 'super_admin' && user.storeId) {
+      where.storeId = user.storeId;
     }
 
     // Find the product that contains this variant
@@ -3304,11 +3294,9 @@ export class ProductService {
 
     // Build where clause based on user permissions
     let where: any = {};
-    if (user.role !== 'super_admin') {
-      where.clientId = user.clientId;
-      if (user.storeId) {
-        where.storeId = user.storeId;
-      }
+    where.clientId = user.clientId;
+    if (user.role !== 'super_admin' && user.storeId) {
+      where.storeId = user.storeId;
     }
 
     // Find all products with variants

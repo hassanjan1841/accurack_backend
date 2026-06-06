@@ -27,6 +27,7 @@ interface CreateSaleHistoryInput {
 interface SaleHistoryUser {
   id: string;
   role: Role;
+  clientId: string;
   stores: { storeId: string }[];
 }
 
@@ -109,6 +110,7 @@ export class SaleHistoryService {
     // Build where conditions
     const whereConditions: any = {
       storeId: query.storeId,
+      clientId: user.clientId,
     };
 
     // Apply filters

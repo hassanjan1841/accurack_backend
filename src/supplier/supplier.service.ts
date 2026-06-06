@@ -104,32 +104,17 @@ export class SupplierService {
       // Build where clause based on user role and store access
       let whereClause: any = {
         status: Status.active,
+        clientId: user.clientId,
       };
-
-      // if (user.role === Role.super_admin) {
-      //   // Super admin can see all suppliers
-      //   if (storeId) {
-      //     whereClause.storeId = storeId;
-      //   }
-      // } else {
-      //   // Other users can only see suppliers from their accessible stores
-      //   const accessibleStoreIds =
-      //     user.stores?.map((store) => store.storeId) || [];
-      //   if (storeId) {
-      //     // Check if user has access to the specific store
-      //     if (!accessibleStoreIds.includes(storeId)) {
-      //       throw new ForbiddenException('No access to this store');
-      //     }
-      //     whereClause.storeId = storeId;
-      //   } else {
-      //     whereClause.storeId = { in: accessibleStoreIds };
-      //   }
-      // }
+      if (storeId) {
+        whereClause.storeId = storeId;
+      }
 
       const skip = (page - 1) * limit;
 
       const [suppliers, total] = await Promise.all([
         prisma.suppliers.findMany({
+          where: whereClause,
           select: {
             id: true,
             name: true,
@@ -200,20 +185,8 @@ export class SupplierService {
       // Get the tenant-specific Prisma client
       const prisma = await this.tenantContext.getPrismaClient();
 
-      let whereClause: any = {
-        id: supplierId,
-        status: Status.active,
-      };
-
-      // Add store access check for non-super-admin users
-      if (user.role !== Role.super_admin) {
-        const accessibleStoreIds =
-          user.stores?.map((store) => store.storeId) || [];
-        whereClause.storeId = { in: accessibleStoreIds };
-      }
-
       const supplier = await prisma.suppliers.findFirst({
-        // where: whereClause,
+        where: { id: supplierId, status: Status.active, clientId: user.clientId },
         select: {
           id: true,
           name: true,
@@ -334,18 +307,8 @@ export class SupplierService {
       const prisma = await this.tenantContext.getPrismaClient();
 
       // First, check if supplier exists and user has access
-      const whereClause: any = {
-        id: supplierId,
-        status: Status.active,
-      };
-
-      // if (user.role !== Role.super_admin) {
-      //     const accessibleStoreIds = user.stores?.map(store => store.storeId) || [];
-      //     whereClause.storeId = { in: accessibleStoreIds };
-      // }
-
       const existingSupplier = await prisma.suppliers.findFirst({
-        where: whereClause,
+        where: { id: supplierId, status: Status.active, clientId: user.clientId },
       });
 
       if (!existingSupplier) {
@@ -443,19 +406,8 @@ export class SupplierService {
       const prisma = await this.tenantContext.getPrismaClient();
 
       // First, check if supplier exists and user has access
-      let whereClause: any = {
-        id: supplierId,
-        status: Status.active,
-      };
-
-      if (user.role !== Role.super_admin) {
-        const accessibleStoreIds =
-          user.stores?.map((store) => store.storeId) || [];
-        whereClause.storeId = { in: accessibleStoreIds };
-      }
-
       const existingSupplier = await prisma.suppliers.findFirst({
-        where: whereClause,
+        where: { id: supplierId, status: Status.active, clientId: user.clientId },
       });
 
       if (!existingSupplier) {
@@ -494,20 +446,8 @@ export class SupplierService {
     // Get tenant-specific Prisma client
     const prisma = await this.tenantContext.getPrismaClient();
 
-    let whereClause: any = {
-      id: supplierId,
-      status: Status.active,
-    };
-
-    // Store access for non-super-admin
-    if (user.role !== Role.super_admin) {
-      const accessibleStoreIds =
-        user.stores?.map((store) => store.storeId) || [];
-      whereClause.storeId = { in: accessibleStoreIds };
-    }
-
     const supplier = await prisma.suppliers.findFirst({
-      where: whereClause,
+      where: { id: supplierId, status: Status.active, clientId: user.clientId },
       select: {
         id: true,
         name: true,
@@ -541,6 +481,7 @@ export class SupplierService {
     const prisma = await this.tenantContext.getPrismaClient();
     let whereClause: any = {
       status: Status.active,
+      clientId: user.clientId,
       OR: [
         { name: { contains: query, mode: 'insensitive' } },
         { email: { contains: query, mode: 'insensitive' } },
@@ -548,21 +489,8 @@ export class SupplierService {
         { address: { contains: query, mode: 'insensitive' } },
       ],
     };
-    if (user.role === Role.super_admin) {
-      if (storeId) {
-        whereClause.storeId = storeId;
-      }
-    } else {
-      const accessibleStoreIds =
-        user.stores?.map((store) => store.storeId) || [];
-      if (storeId) {
-        if (!accessibleStoreIds.includes(storeId)) {
-          throw new ForbiddenException('No access to this store');
-        }
-        whereClause.storeId = storeId;
-      } else {
-        whereClause.storeId = { in: accessibleStoreIds };
-      }
+    if (storeId) {
+      whereClause.storeId = storeId;
     }
     return prisma.suppliers.findMany({
       where: whereClause,
