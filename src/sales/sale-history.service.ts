@@ -3,7 +3,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaClientService } from '../prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   QuerySalesHistoryDto,
   SaleHistoryAction,
@@ -33,7 +33,7 @@ interface SaleHistoryUser {
 @Injectable()
 export class SaleHistoryService {
   constructor(
-    private prisma: PrismaClientService,
+    private prisma: PrismaService,
     private tenantContext: TenantContextService,
   ) {}
 

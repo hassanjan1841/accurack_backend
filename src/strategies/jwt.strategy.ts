@@ -1,13 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PrismaClientService } from '../prisma-client/prisma-client.service';
-import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma/prisma.service';
 import { Request } from 'express';
 
-import { MultiTenantService } from '../database/multi-tenant.service';
-import { PrismaClient } from '@prisma/client';
-import { getTenantPrismaClient } from '../tenant/prisma-tenant-cache';
 
 // JWT payload structure
 interface JwtPayload {
@@ -47,9 +43,7 @@ interface ValidatedUser {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private prisma: PrismaClientService,
-    private jwtService: JwtService,
-    private multiTenantService: MultiTenantService,
+    private prisma: PrismaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -98,55 +92,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           },
         },
       });
-
-      if (!user && payload.clientId) {
-        try {
-          const credentials = await this.multiTenantService[
-            'getTenantCredentials'
-          ](payload.clientId);
-          if (credentials) {
-            const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-            const tenantPrisma = getTenantPrismaClient(
-              payload.clientId,
-              tenantDatabaseUrl,
-            );
-
-            user = await tenantPrisma.users.findUnique({
-              where: { id: payload.id },
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                role: true,
-                clientId: true,
-                googleId: true,
-                status: true,
-                businessId: true,
-                createdAt: true,
-                updatedAt: true,
-                excludedPermissions: true, // <-- added
-                stores: {
-                  select: {
-                    storeId: true,
-                  },
-                },
-                business: {
-                  select: {
-                    id: true,
-                    businessName: true,
-                    contactNo: true,
-                    website: true,
-                    logoUrl: true,
-                  },
-                },
-              },
-            });
-          }
-        } catch (error) {
-          console.error('Error validating user in tenant database:', error);
-        }
-      }
 
       if (!user) {
         throw new UnauthorizedException('User not found or inactive.');

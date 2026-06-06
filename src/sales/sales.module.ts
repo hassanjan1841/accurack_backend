@@ -17,7 +17,7 @@ import { MultiTenantService } from 'src/database/multi-tenant.service';
 import { JwtStrategy } from 'src/strategies/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { PrismaClientModule } from 'src/prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { SaleDraftService } from './sale-draft.service';
 
 @Module({
@@ -27,7 +27,7 @@ import { SaleDraftService } from './sale-draft.service';
         secret: process.env.JWT_SECRET,
         signOptions: { expiresIn: '15m' },
       }),
-      PrismaClientModule,
+      PrismaModule,
       TenantModule
     ],
   controllers: [SalesController],

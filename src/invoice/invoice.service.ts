@@ -2,7 +2,7 @@ import { Invoice } from '@prisma/client';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as QRCode from 'qrcode';
 import { businessInfoDto, CreateInvoiceDto } from './dto/invoice.dto';
-import { PrismaClientService } from 'src/prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
 
 interface User {
@@ -16,7 +16,7 @@ interface User {
 @Injectable()
 export class InvoiceService {
   constructor(
-    private readonly prisma: PrismaClientService, // Keep for fallback/master DB operations
+    private readonly prisma: PrismaService, // Keep for fallback/master DB operations
     private readonly tenantContext: TenantContextService, // Add tenant context
   ) {}
 
@@ -193,6 +193,7 @@ export class InvoiceService {
       invoice = await prisma.invoice.create({
         data: {
           saleId,
+          clientId: (user as any).clientId,
           customerId: sale.customerId,
           businessId: userExist.businessId,
           invoiceNumber: dto.invoiceNumber,
@@ -222,6 +223,7 @@ export class InvoiceService {
             create: customFields?.map((field) => ({
               fieldName: field.name,
               fieldValue: field.value,
+              clientId: (user as any).clientId,
             })),
           },
         },

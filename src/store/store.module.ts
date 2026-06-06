@@ -6,7 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { TenantModule } from '../tenant/tenant.module';
-import { PrismaClientModule } from '../prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { MultiTenantService } from '../database/multi-tenant.service';
 
 @Module({
@@ -18,9 +18,9 @@ import { MultiTenantService } from '../database/multi-tenant.service';
     }),
     PermissionsModule,
     TenantModule, // Import TenantModule to get TenantContextService
-    PrismaClientModule, // Import PrismaClientModule for JwtStrategy (uses master DB)
+    PrismaModule, // Import PrismaModule for JwtStrategy (uses master DB)
   ],
   controllers: [StoreController],
-  providers: [StoreService, JwtStrategy, MultiTenantService], // JwtStrategy needs PrismaClientService from PrismaClientModule
+  providers: [StoreService, JwtStrategy, MultiTenantService], // JwtStrategy needs PrismaService from PrismaModule
 })
 export class StoreModule {}

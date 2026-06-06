@@ -1,18 +1,15 @@
 /**
- * Category Seeder for Prisma (Tenant DB)
+ * Category Seeder for Prisma
  *
  * Usage:
- *   npx ts-node prisma/seed-category.ts --db-url="<TENANT_DATABASE_URL>"
+ *   npx ts-node prisma/seed-category.ts --db-url="<DATABASE_URL>" --client-id="<CLIENT_UUID>"
  *
  * Example:
- *   npx ts-node prisma/seed-category.ts --db-url="postgresql://user:pass@localhost:5432/tenantdb"
- *
- * This script will upsert a standard set of product categories into the tenant database.
+ *   npx ts-node prisma/seed-category.ts --db-url="postgresql://user:pass@localhost:5432/db" --client-id="uuid-here"
  */
 
 import { PrismaClient } from '@prisma/client';
 
-// Standard product categories with code (customize as needed)
 const categories = [
   { name: 'Electronics', code: 'ELECTRONICS' },
   { name: 'Groceries', code: 'GROCERIES' },
@@ -37,14 +34,19 @@ const categories = [
   { name: 'Baby Products', code: 'BABY_PRODUCTS' },
 ];
 
-// Get DB URL from command line argument
 const dbUrlArg = process.argv.find((arg) => arg.startsWith('--db-url='));
-const dbUrl = dbUrlArg ? dbUrlArg.split('=')[1] : process.env.DATABASE_URL;
+const clientIdArg = process.argv.find((arg) => arg.startsWith('--client-id='));
+
+const dbUrl = dbUrlArg ? dbUrlArg.split('=').slice(1).join('=') : process.env.DATABASE_URL;
+const clientId = clientIdArg ? clientIdArg.split('=').slice(1).join('=') : process.env.SEED_CLIENT_ID;
 
 if (!dbUrl) {
-  console.error(
-    '❌ No database URL provided. Use --db-url or set DATABASE_URL.',
-  );
+  console.error('❌ No database URL provided. Use --db-url or set DATABASE_URL.');
+  process.exit(1);
+}
+
+if (!clientId) {
+  console.error('❌ No client ID provided. Use --client-id or set SEED_CLIENT_ID.');
   process.exit(1);
 }
 
@@ -53,9 +55,9 @@ const prisma = new PrismaClient({ datasources: { db: { url: dbUrl } } });
 async function main() {
   for (const { name, code } of categories) {
     await prisma.category.upsert({
-      where: { code },
+      where: { code_clientId: { code, clientId: clientId! } },
       update: { name },
-      create: { name, code },
+      create: { name, code, clientId: clientId! },
     });
     console.log(`✔️  Category upserted: ${name} (${code})`);
   }

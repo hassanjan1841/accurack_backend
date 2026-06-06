@@ -31,6 +31,7 @@ export class CategoryService {
 
   async createCategory(dto: CreateCategoryDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     // Check for duplicate name or code
 
     const existing = await prisma.category.findFirst({
@@ -41,7 +42,7 @@ export class CategoryService {
       throw new BadRequestException(
         'Category with this name or code already exists',
       );
-    return prisma.category.create({ data: dto });
+    return prisma.category.create({ data: { ...dto, clientId } });
   }
 
   async getAllCategories() {
@@ -118,8 +119,9 @@ export class CategoryService {
     }
 
     // No match found - create new category
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     category = await prisma.category.create({
-      data: { name: categoryName },
+      data: { name: categoryName, clientId },
     });
 
     return { id: category.id, name: category.name };

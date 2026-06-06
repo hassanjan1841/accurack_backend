@@ -55,6 +55,7 @@ export class ExpenseSheetService {
                             hasAutoSum: column.hasAutoSum ?? false,
                             orderIndex: index,
                             metadata: column.metadata,
+                            clientId: user.clientId,
                         })),
                     },
                 },
@@ -68,6 +69,7 @@ export class ExpenseSheetService {
                 await tx.expenseEntry.createMany({
                     data: dto.entries.map((entry) => ({
                         sheetId: createdSheet.id,
+                        clientId: user.clientId,
                         createdBy: user.id,
                         status: (entry.status as ExpenseEntryStatus) || ExpenseEntryStatus.DRAFT,
                     })),
@@ -98,7 +100,7 @@ export class ExpenseSheetService {
 
                 if (entryValues.length > 0) {
                     await tx.expenseEntryValue.createMany({
-                        data: entryValues,
+                        data: entryValues.map((v) => ({ ...v, clientId: user.clientId })),
                     });
                 }
             }
@@ -344,6 +346,7 @@ export class ExpenseSheetService {
                         hasAutoSum: column.hasAutoSum ?? false,
                         orderIndex: index,
                         metadata: column.metadata,
+                        clientId,
                     })),
                 };
             }
@@ -365,6 +368,7 @@ export class ExpenseSheetService {
                 await tx.expenseEntry.createMany({
                     data: dto.entries.map((entry) => ({
                         sheetId: id,
+                        clientId,
                         createdBy: user.id,
                         status: (entry.status as ExpenseEntryStatus) || ExpenseEntryStatus.DRAFT,
                     })),
@@ -393,7 +397,7 @@ export class ExpenseSheetService {
 
                 if (entryValues.length > 0) {
                     await tx.expenseEntryValue.createMany({
-                        data: entryValues,
+                        data: entryValues.map((v) => ({ ...v, clientId })),
                     });
                 }
             }
@@ -476,7 +480,7 @@ export class ExpenseSheetService {
                 }
 
                 if (entryValues.length > 0) {
-                    await prisma.expenseEntryValue.createMany({ data: entryValues });
+                    await prisma.expenseEntryValue.createMany({ data: entryValues.map((v) => ({ ...v, clientId })) });
                 }
                 results.push({ sheetId: sId, added: sRows.length });
             }
@@ -493,8 +497,9 @@ export class ExpenseSheetService {
             if (!sheet) throw new NotFoundException('Expense sheet not found');
 
             // Prepare entry and value data
-            const entriesData = rows.map(row => ({
+            const entriesData = rows.map((_row) => ({
                 sheetId: sheet.id,
+                clientId,
                 createdBy: user.id as string,
                 status: ExpenseEntryStatus.DRAFT,
             }));
@@ -526,7 +531,7 @@ export class ExpenseSheetService {
             }
 
             if (entryValues.length > 0) {
-                await prisma.expenseEntryValue.createMany({ data: entryValues });
+                await prisma.expenseEntryValue.createMany({ data: entryValues.map((v) => ({ ...v, clientId })) });
             }
 
             return { added: rows.length };
@@ -569,6 +574,7 @@ export class ExpenseSheetService {
             // Prepare entry and value data
             const entriesData = rows.map(row => ({
                 sheetId: sheet.id,
+                clientId,
                 createdBy: user.id as string,
                 status: row.status,
             }));
@@ -605,7 +611,7 @@ export class ExpenseSheetService {
             // Create entry values
             if (entryValues.length > 0) {
                 await prisma.expenseEntryValue.createMany({
-                    data: entryValues,
+                    data: entryValues.map((v) => ({ ...v, clientId })),
                 });
             }
 

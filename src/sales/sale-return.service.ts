@@ -27,6 +27,7 @@ export class SaleReturnService {
     let maxRefundForItem = await this.validateReturnItems(returnItems, sale);
 
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
 
     // Process the return in a transaction
     return await prisma.$transaction(async (tx) => {
@@ -38,6 +39,7 @@ export class SaleReturnService {
         const returnRecord = await tx.saleReturn.create({
           data: {
             saleId,
+            clientId,
             productId: returnItem.productId,
             pluUpc: returnItem.pluUpc || '',
             quantity: returnItem.quantity,

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '../strategies/jwt.strategy';
-import { PrismaClientModule } from '../prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
 import { ResponseService } from '../common/services/response.service';
@@ -20,7 +20,7 @@ import { CategoryService } from './category.service';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '15m' },
     }),
-    PrismaClientModule,
+    PrismaModule,
   ],
   controllers: [ProductController, CategoryController],
   providers: [

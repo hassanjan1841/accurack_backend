@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common';
 import { DriverController } from './driver.controller';
 import { DriverService } from './driver.service';
-import { PrismaClientService } from '../prisma-client/prisma-client.service';
 import { ResponseService } from '../common/services/response.service';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import { MultiTenantService } from '../database/multi-tenant.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule, JwtService } from '@nestjs/jwt';
-import { PrismaClientModule } from 'src/prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { PermissionsModule } from 'src/permissions/permissions.module';
 import { CommonModule, PermissionsService } from 'src/common';
 
@@ -19,14 +18,13 @@ import { CommonModule, PermissionsService } from 'src/common';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '15m' },
     }),
-    PrismaClientModule,
+    PrismaModule,
     PermissionsModule,
     CommonModule,
   ],
   controllers: [DriverController],
   providers: [
     DriverService,
-    PrismaClientService,
     ResponseService, // Required by BaseDriverController
     TenantContextService, // Add tenant context
     MultiTenantService, // Required by TenantContextService

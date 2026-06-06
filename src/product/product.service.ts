@@ -19,7 +19,7 @@ import {
   ProductExcelRow,
 } from '../utils/productsFileParser';
 import * as crypto from 'crypto';
-import { PrismaClientService } from 'src/prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import { CategoryService } from './category.service';
 import { chunk } from 'lodash';
@@ -44,7 +44,7 @@ interface FileUpload {
 @Injectable()
 export class ProductService {
   constructor(
-    private readonly prisma: PrismaClientService, // Keep for fallback/master DB operations
+    private readonly prisma: PrismaService, // Keep for fallback/master DB operations
     private readonly tenantContext: TenantContextService, // Add tenant context
     private readonly categoryService: CategoryService, // Add category service
   ) {}
@@ -441,6 +441,7 @@ export class ProductService {
           return prisma.productSupplier.create({
             data: {
               productId: product.id,
+              clientId: createProductDto.clientId,
               supplierId: supplierData.supplierId,
               costPrice: supplierData.costPrice,
               categoryId: createProductDto.categoryId,
@@ -468,6 +469,7 @@ export class ProductService {
       await prisma.productSupplier.create({
         data: {
           productId: product.id,
+          clientId: createProductDto.clientId,
           supplierId: createProductDto.supplierId,
           costPrice: Number(createProductDto.singleItemCostPrice) || 0,
           categoryId: createProductDto.categoryId,
@@ -489,11 +491,8 @@ export class ProductService {
               variant.packs.map((pack) =>
                 prisma.pack.create({
                   data: {
-                    product: {
-                      connect: {
-                        id: product.id,
-                      },
-                    },
+                    productId: product.id,
+                    clientId: createProductDto.clientId,
                     minimumSellingQuantity: pack.minimumSellingQuantity,
                     totalPacksQuantity: pack.totalPacksQuantity,
                     orderedPacksPrice: pack.orderedPacksPrice,
@@ -542,6 +541,7 @@ export class ProductService {
               await prisma.productSupplier.create({
                 data: {
                   productId: product.id,
+                  clientId: createProductDto.clientId,
                   supplierId: variant.supplierId,
                   costPrice: Number(variant.price) || 0,
                   categoryId: createProductDto.categoryId,
@@ -586,11 +586,8 @@ export class ProductService {
         createProductDto.packs.map((pack) =>
           prisma.pack.create({
             data: {
-              product: {
-                connect: {
-                  id: product.id,
-                },
-              },
+              productId: product.id,
+              clientId: createProductDto.clientId,
               minimumSellingQuantity: pack.minimumSellingQuantity,
               totalPacksQuantity: pack.totalPacksQuantity,
               orderedPacksPrice: pack.orderedPacksPrice,
@@ -1284,11 +1281,8 @@ export class ProductService {
                 variant.packs.map((pack) =>
                   prisma.pack.create({
                     data: {
-                      product: {
-                        connect: {
-                          id: id, // Assuming 'id' is the product's ID
-                        },
-                      },
+                      productId: id,
+                      clientId: product.clientId,
                       minimumSellingQuantity: pack.minimumSellingQuantity,
                       totalPacksQuantity: pack.totalPacksQuantity,
                       orderedPacksPrice: pack.orderedPacksPrice,
@@ -1337,6 +1331,7 @@ export class ProductService {
                 await prisma.productSupplier.create({
                   data: {
                     productId: product.id,
+                    clientId: product.clientId,
                     supplierId: variant.supplierId,
                     costPrice: Number(variant.price) || 0,
                     categoryId: updateProductDto.categoryId,
@@ -1374,11 +1369,8 @@ export class ProductService {
           updateProductDto.packs.map((pack) =>
             prisma.pack.create({
               data: {
-                product: {
-                  connect: {
-                    id: id, // Assuming 'id' is the product's ID
-                  },
-                },
+                productId: id,
+                clientId: product.clientId,
                 minimumSellingQuantity: pack.minimumSellingQuantity,
                 totalPacksQuantity: pack.totalPacksQuantity,
                 orderedPacksPrice: pack.orderedPacksPrice,
@@ -1504,6 +1496,7 @@ export class ProductService {
           await prisma.productSupplier.createMany({
             data: updateProductDto.productSuppliers.map((ps) => ({
               productId: id,
+              clientId: product.clientId,
               supplierId: ps.supplierId,
               costPrice: ps.costPrice,
               categoryId: updateProductDto.categoryId,
@@ -2000,6 +1993,7 @@ export class ProductService {
 
   async assignSupplier(dto: AssignSupplierDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId: tenantClientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     const { supplierId, storeId, products } = dto;
 
     // Validate required fields
@@ -2086,6 +2080,7 @@ export class ProductService {
           const productSupplier = await prisma.productSupplier.create({
             data: {
               productId,
+              clientId: tenantClientId,
               supplierId,
               costPrice: Number(costPrice),
               state,
@@ -2244,6 +2239,7 @@ export class ProductService {
             data: {
               fileHash,
               storeId: store.id,
+              clientId: user.clientId,
               fileName: file.originalname,
               status: 'processing',
             },
@@ -2302,7 +2298,7 @@ export class ProductService {
 
               if (!supplier) {
                 supplier = await prisma.suppliers.create({
-                  data: supplierData,
+                  data: { ...supplierData, clientId: user.clientId },
                 });
               }
 
@@ -2416,6 +2412,7 @@ export class ProductService {
                 await prisma.productSupplier.create({
                   data: {
                     productId: createdProduct.id,
+                    clientId: user.clientId,
                     supplierId: supplier.id,
                     costPrice: product.VendorPrice || 0,
                     categoryId: resolvedCategory?.id,
@@ -2430,11 +2427,8 @@ export class ProductService {
 
                 const pack = await prisma.pack.create({
                   data: {
-                    product: {
-                      connect: {
-                        id: createdProduct.id,
-                      },
-                    },
+                    productId: createdProduct.id,
+                    clientId: user.clientId,
                     minimumSellingQuantity: product.MinimumSellingQuantity || 1,
                     totalPacksQuantity: product.PackOf || 1,
                     orderedPacksPrice: Number(product.PackOfPrice) || 0, // Ensure conversion
@@ -2468,11 +2462,8 @@ export class ProductService {
                     // console.log('product.PackOfPrice', product.PackOfPrice);
                     const pack = await prisma.pack.create({
                       data: {
-                        product: {
-                          connect: {
-                            id: createdProduct.id,
-                          },
-                        },
+                        productId: createdProduct.id,
+                        clientId: user.clientId,
                         minimumSellingQuantity:
                           product.MinimumSellingQuantity || 1,
                         totalPacksQuantity: product.PackOf || 1,
@@ -2497,11 +2488,8 @@ export class ProductService {
                   // If no attribute values but MatrixAttributes exists, create a default variant
                   const pack = await prisma.pack.create({
                     data: {
-                      product: {
-                        connect: {
-                          id: createdProduct.id,
-                        },
-                      },
+                      productId: createdProduct.id,
+                      clientId: user.clientId,
                       minimumSellingQuantity:
                         product.MinimumSellingQuantity || 1,
                       totalPacksQuantity: product.PackOf || 1,

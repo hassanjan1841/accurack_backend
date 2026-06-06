@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
 import { GoogleStrategy } from '../strategies/google.strategy';
 import { JwtStrategy } from '../strategies/jwt.strategy';
 
-import { PrismaClientModule } from 'src/prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { MailModule } from 'src/mail/mail.module';
 import { PermissionsModule } from 'src/permissions/permissions.module';
 import { MultiTenantService } from '../database/multi-tenant.service';
@@ -45,7 +45,7 @@ const createProviders = (): any[] => {
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    PrismaClientModule,
+    PrismaModule,
     JwtModule.register({
       secret: (() => {
         const jwtSecret = process.env.JWT_SECRET;

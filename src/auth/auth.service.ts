@@ -23,24 +23,21 @@ import {
   InviteDto,
   AcceptInviteDto,
 } from './dto/auth.dto';
-import { PrismaClientService } from 'src/prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { MultiTenantService } from '../database/multi-tenant.service';
 import { Role, Status } from '@prisma/client';
 
 import * as crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
-import { getTenantPrismaClient } from '../tenant/prisma-tenant-cache';
-import { TenantContextService } from 'src/tenant/tenant-context.service';
+
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaClientService,
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private readonly permissionsService: PermissionsService,
     private readonly multiTenantService: MultiTenantService,
-    private readonly tenantContext: TenantContextService, // Add tenant context
   ) {}
   async googleLogin(googleUser: GoogleProfileDto): Promise<AuthResponseDto> {
     try {
@@ -129,33 +126,11 @@ export class AuthService {
         expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
       });
 
-      // Fetch user permissions (same logic as normal login)
       let userPermissions: any = null;
       try {
-        if (user.clientId) {
-          // For tenant users, get permissions from their tenant database
-          const credentials = await this.multiTenantService[
-            'getTenantCredentials'
-          ](user.clientId);
-          if (credentials) {
-            const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-            const tenantPrisma = getTenantPrismaClient(
-              user.clientId,
-              tenantDatabaseUrl,
-            );
-            const permissions =
-              await this.permissionsService.getUserPermissionsWithClient(
-                tenantPrisma,
-                user.id,
-              );
-            userPermissions = permissions;
-          }
-        } else {
-          // For master database users (super_admin, admin), get permissions from master database
-          userPermissions = await this.permissionsService.getUserPermissions(
-            user.id,
-          );
-        }
+        userPermissions = await this.permissionsService.getUserPermissions(
+          user.id,
+        );
       } catch (error) {
         console.error(
           'Failed to get user permissions during Google login:',
@@ -168,37 +143,16 @@ export class AuthService {
         };
       }
 
-      // Audit log (same as normal login)
       try {
-        if (user.clientId) {
-          const credentials = await this.multiTenantService[
-            'getTenantCredentials'
-          ](user.clientId);
-          if (credentials) {
-            const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-            const tenantPrisma = getTenantPrismaClient(
-              user.clientId,
-              tenantDatabaseUrl,
-            );
-            await tenantPrisma.auditLogs.create({
-              data: {
-                userId: user.id,
-                action: 'google_login',
-                resource: 'auth',
-                details: { email: user.email },
-              },
-            });
-          }
-        } else {
-          await this.prisma.auditLogs.create({
-            data: {
-              userId: user.id,
-              action: 'google_login',
-              resource: 'auth',
-              details: { email: user.email },
-            },
-          });
-        }
+        await this.prisma.auditLogs.create({
+          data: {
+            userId: user.id,
+            clientId: user.clientId,
+            action: 'google_login',
+            resource: 'auth',
+            details: { email: user.email },
+          },
+        });
       } catch (error) {
         console.error('Failed to create audit log for Google login:', error);
       }
@@ -347,7 +301,6 @@ export class AuthService {
       if (!user) {
         throw new InternalServerErrorException('Failed to create user');
       }
-      await this.permissionsService.assignDefaultPermissions(user.id);
 
       // Send OTP email
       await this.mailService.sendMail({
@@ -370,6 +323,7 @@ export class AuthService {
       await this.prisma.auditLogs.create({
         data: {
           userId: user.id,
+          clientId: clientId,
           action: 'user_created',
           resource: 'auth',
           details: {
@@ -444,6 +398,7 @@ export class AuthService {
         },
         select: {
           id: true,
+          clientId: true,
           otpExpiresAt: true,
         },
       });
@@ -463,6 +418,7 @@ export class AuthService {
       await this.prisma.auditLogs.create({
         data: {
           userId: user.id,
+          clientId: user.clientId,
           action: 'otp_verified',
           resource: 'auth',
           details: {
@@ -510,6 +466,7 @@ export class AuthService {
           email: true,
           status: true,
           isOtpUsed: true,
+          clientId: true,
         },
       });
 
@@ -564,6 +521,7 @@ export class AuthService {
       await this.prisma.auditLogs.create({
         data: {
           userId: user.id,
+          clientId: user.clientId,
           action: 'otp_resent',
           resource: 'auth',
           details: {
@@ -594,60 +552,10 @@ export class AuthService {
     email: string,
     selectFields: any = {},
   ): Promise<any | null> {
-    // First, try to find user in master database
-    let user = await this.prisma.users.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { email },
       select: selectFields,
     });
-
-    // If user not found in master database, search in tenant databases
-    if (!user) {
-      console.log(
-        `User ${email} not found in master database, searching tenant databases...`,
-      );
-
-      // Get all active clients from master database
-      const clients = await this.prisma.clients.findMany({
-        where: { status: 'active' },
-        select: { id: true, name: true },
-      });
-
-      // Search each tenant database for the user
-      for (const client of clients) {
-        try {
-          const credentials = await this.multiTenantService[
-            'getTenantCredentials'
-          ](client.id);
-          if (!credentials) continue;
-
-          const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-
-          const tenantPrisma = getTenantPrismaClient(
-            client.id,
-            tenantDatabaseUrl,
-          );
-
-          const tenantUser = await tenantPrisma.users.findUnique({
-            where: { email },
-            select: selectFields,
-          });
-
-          if (tenantUser) {
-            user = tenantUser;
-            console.log(
-              `Found user ${email} in tenant database for client: ${client.name}`,
-            );
-            break;
-          }
-        } catch (error) {
-          console.error(
-            `Error searching tenant database for client ${client.id}:`,
-            error,
-          );
-          continue;
-        }
-      }
-    }
 
     return user;
   }
@@ -657,37 +565,13 @@ export class AuthService {
    */
   private async findUserByIdAcrossDatabases(
     userId: string,
-    clientId?: string,
+    _clientId?: string,
     selectFields: any = {},
   ): Promise<any | null> {
-    // First, try to find user in master database
-    let user = await this.prisma.users.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { id: userId },
       select: selectFields,
     });
-
-    // If user not found in master database and has clientId, check tenant database
-    if (!user && clientId) {
-      try {
-        const credentials =
-          await this.multiTenantService['getTenantCredentials'](clientId);
-        if (credentials) {
-          const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-
-          const tenantPrisma = getTenantPrismaClient(
-            clientId,
-            tenantDatabaseUrl,
-          );
-
-          user = await tenantPrisma.users.findUnique({
-            where: { id: userId },
-            select: selectFields,
-          });
-        }
-      } catch (error) {
-        console.error('Error finding user in tenant database:', error);
-      }
-    }
 
     return user;
   }
@@ -763,78 +647,28 @@ export class AuthService {
       secret: process.env.JWT_SECRET,
       expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
     });
-    console.log('🔍 JWT TOKENS:', accessToken);
-    console.log('🔍 JWT payload:', payload);
 
-    // Create audit log in the appropriate database
     try {
-      if (user.clientId) {
-        // User is from tenant database, create audit log there
-        const credentials = await this.multiTenantService[
-          'getTenantCredentials'
-        ](user.clientId);
-        if (credentials) {
-          const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-          const tenantPrisma = getTenantPrismaClient(
-            user.clientId,
-            tenantDatabaseUrl,
-          );
-          await tenantPrisma.auditLogs.create({
-            data: {
-              userId: user.id,
-              action: 'login',
-              resource: 'auth',
-              details: { email },
-            },
-          });
-        }
-      } else {
-        // User is from master database
-        await this.prisma.auditLogs.create({
-          data: {
-            userId: user.id,
-            action: 'login',
-            resource: 'auth',
-            details: { email },
-          },
-        });
-      }
+      await this.prisma.auditLogs.create({
+        data: {
+          userId: user.id,
+          clientId: user.clientId,
+          action: 'login',
+          resource: 'auth',
+          details: { email },
+        },
+      });
     } catch (error) {
       console.error('Failed to create audit log:', error);
-      // Don't fail login if audit log fails
     }
 
-    // Get user permissions for all stores they have access to
     let userPermissions: any = null;
     try {
-      if (user.clientId) {
-        // For tenant users, get permissions from their tenant database
-        const credentials = await this.multiTenantService[
-          'getTenantCredentials'
-        ](user.clientId);
-        if (credentials) {
-          const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-          const tenantPrisma = getTenantPrismaClient(
-            user.clientId,
-            tenantDatabaseUrl,
-          );
-          // Get permissions for all stores the user has access to
-          const permissions =
-            await this.permissionsService.getUserPermissionsWithClient(
-              tenantPrisma,
-              user.id,
-            );
-          userPermissions = permissions;
-        }
-      } else {
-        // For master database users (super_admin, admin), get permissions from master database
-        userPermissions = await this.permissionsService.getUserPermissions(
-          user.id,
-        );
-      }
+      userPermissions = await this.permissionsService.getUserPermissions(
+        user.id,
+      );
     } catch (error) {
       console.error('Failed to get user permissions during login:', error);
-      // Don't fail login if permissions fetch fails, just set to empty
       userPermissions = {
         userId: user.id,
         permissions: [],
@@ -945,113 +779,47 @@ export class AuthService {
       `Password reset requested for user: ${user.email} (role: ${user.role}, clientId: ${user.clientId})`,
     );
 
-    // Create password reset token in the appropriate database
     try {
-      // Check if user is from tenant database (employees, managers) vs master database (super_admin, admin)
-      const isTenantUser =
-        user.role === Role.employee || user.role === Role.manager;
+      // Invalidate existing tokens
+      await this.prisma.passwordResetTokens.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
 
-      if (isTenantUser && user.clientId) {
-        // User is from tenant database (employee/manager), create reset token there
-        const credentials = await this.multiTenantService[
-          'getTenantCredentials'
-        ](user.clientId);
-        if (credentials) {
-          const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-          const tenantPrisma = getTenantPrismaClient(
-            user.clientId,
-            tenantDatabaseUrl,
-          );
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-          try {
-            await tenantPrisma.$connect();
+      await this.prisma.passwordResetTokens.create({
+        data: {
+          token,
+          userId: user.id,
+          expiresAt,
+          clientId: user.clientId,
+        },
+      });
 
-            // Invalidate existing tokens
-            await tenantPrisma.passwordResetTokens.updateMany({
-              where: { userId: user.id, usedAt: null },
-              data: { usedAt: new Date() },
-            });
+      const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+      console.log(`Reset link: ${resetLink}`);
 
-            const token = crypto.randomBytes(32).toString('hex');
-            const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await this.mailService.sendMail({
+        to: user.email,
+        subject: 'Password Reset Request',
+        html: `<p>Hi ${user.firstName},</p>
+               <p>You requested a password reset. Click <a href="${resetLink}">here</a> to reset your password. The link expires in 1 hour.</p>
+               <p>If you didn't request this, please ignore this email.</p>`,
+      });
 
-            await tenantPrisma.passwordResetTokens.create({
-              data: {
-                token,
-                userId: user.id,
-                expiresAt,
-              },
-            });
-
-            const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-            console.log(`Reset link: ${resetLink}`);
-
-            await this.mailService.sendMail({
-              to: user.email,
-              subject: 'Password Reset Request',
-              html: `<p>Hi ${user.firstName},</p>
-                     <p>You requested a password reset. Click <a href="${resetLink}">here</a> to reset your password. The link expires in 1 hour.</p>
-                     <p>If you didn't request this, please ignore this email.</p>`,
-            });
-
-            await tenantPrisma.auditLogs.create({
-              data: {
-                userId: user.id,
-                action: 'password_reset_requested',
-                resource: 'auth',
-                details: { email },
-              },
-            });
-          } finally {
-            await tenantPrisma.$disconnect();
-          }
-        }
-      } else {
-        // User is from master database (super_admin, admin)
-        console.log(
-          `Creating reset token in master database for ${user.role} user`,
-        );
-
-        // Invalidate existing tokens
-        await this.prisma.passwordResetTokens.updateMany({
-          where: { userId: user.id, usedAt: null },
-          data: { usedAt: new Date() },
-        });
-
-        const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-        await this.prisma.passwordResetTokens.create({
-          data: {
-            token,
-            userId: user.id,
-            expiresAt,
-          },
-        });
-
-        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-        console.log(`Reset link: ${resetLink}`);
-
-        await this.mailService.sendMail({
-          to: user.email,
-          subject: 'Password Reset Request',
-          html: `<p>Hi ${user.firstName},</p>
-                 <p>You requested a password reset. Click <a href="${resetLink}">here</a> to reset your password. The link expires in 1 hour.</p>
-                 <p>If you didn't request this, please ignore this email.</p>`,
-        });
-
-        await this.prisma.auditLogs.create({
-          data: {
-            userId: user.id,
-            action: 'password_reset_requested',
-            resource: 'auth',
-            details: { email },
-          },
-        });
-      }
+      await this.prisma.auditLogs.create({
+        data: {
+          userId: user.id,
+          clientId: user.clientId,
+          action: 'password_reset_requested',
+          resource: 'auth',
+          details: { email },
+        },
+      });
     } catch (error) {
       console.error('Failed to process password reset:', error);
-      // Don't expose internal errors to user
     }
 
     return { message: 'If an account exists, a reset link has been sent.' };
@@ -1066,89 +834,25 @@ export class AuthService {
     isTenantUser: boolean;
     clientId?: string;
   } | null> {
-    // First, try to find reset token in master database
-    let resetToken = await this.prisma.passwordResetTokens.findUnique({
+    const resetToken = await this.prisma.passwordResetTokens.findUnique({
       where: { token },
       select: { id: true, userId: true, expiresAt: true, usedAt: true },
     });
 
-    if (resetToken) {
-      // Token found in master database, get user info
-      const user = await this.prisma.users.findUnique({
-        where: { id: resetToken.userId },
-        select: { id: true, email: true, clientId: true, role: true },
-      });
+    if (!resetToken) return null;
 
-      if (user) {
-        return {
-          resetToken,
-          user,
-          isTenantUser: false,
-        };
-      }
-    }
-
-    // If token not found in master database, search in tenant databases
-    console.log(
-      `Reset token ${token} not found in master database, searching tenant databases...`,
-    );
-
-    // Get all active clients from master database
-    const clients = await this.prisma.clients.findMany({
-      where: { status: 'active' },
-      select: { id: true, name: true },
+    const user = await this.prisma.users.findUnique({
+      where: { id: resetToken.userId },
+      select: { id: true, email: true, clientId: true, role: true },
     });
 
-    // Search each tenant database for the reset token
-    for (const client of clients) {
-      try {
-        const credentials = await this.multiTenantService[
-          'getTenantCredentials'
-        ](client.id);
-        if (!credentials) continue;
+    if (!user) return null;
 
-        const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-
-        const tenantPrisma = getTenantPrismaClient(
-          client.id,
-          tenantDatabaseUrl,
-        );
-
-        const tenantResetToken =
-          await tenantPrisma.passwordResetTokens.findUnique({
-            where: { token },
-            select: { id: true, userId: true, expiresAt: true, usedAt: true },
-          });
-
-        if (tenantResetToken) {
-          // Token found in tenant database, get user info
-          const tenantUser = await tenantPrisma.users.findUnique({
-            where: { id: tenantResetToken.userId },
-            select: { id: true, email: true, clientId: true, role: true },
-          });
-
-          if (tenantUser) {
-            console.log(
-              `Found reset token ${token} in tenant database for client: ${client.name}`,
-            );
-            return {
-              resetToken: tenantResetToken,
-              user: tenantUser,
-              isTenantUser: true,
-              clientId: client.id,
-            };
-          }
-        }
-      } catch (error) {
-        console.error(
-          `Error searching tenant database for client ${client.id}:`,
-          error,
-        );
-        continue;
-      }
-    }
-
-    return null;
+    return {
+      resetToken,
+      user,
+      isTenantUser: false,
+    };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -1179,80 +883,28 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 10);
 
     try {
-      // Check if user is from tenant database (employees, managers) vs master database (super_admin, admin)
-      const isActuallyTenantUser =
-        user.role === Role.employee || user.role === Role.manager;
+      // Update password in unified database
+      await this.prisma.users.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      });
 
-      if (isActuallyTenantUser && clientId) {
-        // User is from tenant database (employee/manager), update password there
-        console.log(
-          `Updating password in tenant database for ${user.role} user`,
-        );
-        const credentials =
-          await this.multiTenantService['getTenantCredentials'](clientId);
-        if (credentials) {
-          const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-          const tenantPrisma = getTenantPrismaClient(
-            clientId,
-            tenantDatabaseUrl,
-          );
+      // Mark token as used
+      await this.prisma.passwordResetTokens.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      });
 
-          try {
-            await tenantPrisma.$connect();
-
-            // Update password in tenant database
-            await tenantPrisma.users.update({
-              where: { id: user.id },
-              data: { passwordHash },
-            });
-
-            // Mark token as used in tenant database
-            await tenantPrisma.passwordResetTokens.update({
-              where: { id: resetToken.id },
-              data: { usedAt: new Date() },
-            });
-
-            // Create audit log in tenant database
-            await tenantPrisma.auditLogs.create({
-              data: {
-                userId: user.id,
-                action: 'password_reset',
-                resource: 'auth',
-                details: { email: user.email },
-              },
-            });
-          } finally {
-            await tenantPrisma.$disconnect();
-          }
-        }
-      } else {
-        // User is from master database (super_admin, admin)
-        console.log(
-          `Updating password in master database for ${user.role} user`,
-        );
-
-        // Update password in master database
-        await this.prisma.users.update({
-          where: { id: user.id },
-          data: { passwordHash },
-        });
-
-        // Mark token as used in master database
-        await this.prisma.passwordResetTokens.update({
-          where: { id: resetToken.id },
-          data: { usedAt: new Date() },
-        });
-
-        // Create audit log in master database
-        await this.prisma.auditLogs.create({
-          data: {
-            userId: user.id,
-            action: 'password_reset',
-            resource: 'auth',
-            details: { email: user.email },
-          },
-        });
-      }
+      // Create audit log
+      await this.prisma.auditLogs.create({
+        data: {
+          userId: user.id,
+          clientId: user.clientId,
+          action: 'password_reset',
+          resource: 'auth',
+          details: { email: user.email },
+        },
+      });
 
       return { message: 'Password reset successfully' };
     } catch (error) {
@@ -1310,7 +962,9 @@ export class AuthService {
         email,
         role,
         userId,
+        storeId,
         status: Status.pending,
+        clientId: store.clientId,
       },
       select: { id: true, token: true },
     });
@@ -1330,6 +984,7 @@ export class AuthService {
     await this.prisma.auditLogs.create({
       data: {
         userId,
+        clientId: store.clientId,
         action: 'invite_sent',
         resource: 'auth',
         details: { email, role, storeId },
@@ -1350,6 +1005,7 @@ export class AuthService {
         role: true,
         status: true,
         userId: true,
+        storeId: true,
       },
     });
     if (!invite) {
@@ -1357,6 +1013,9 @@ export class AuthService {
     }
     if (invite.status !== Status.pending) {
       throw new BadRequestException('Invite link already used or invalid');
+    }
+    if (!invite.storeId) {
+      throw new BadRequestException('Invite link is missing store assignment');
     }
 
     const existingUser = await this.prisma.users.findUnique({
@@ -1398,7 +1057,8 @@ export class AuthService {
     await this.prisma.userStoreMap.create({
       data: {
         userId: user.id,
-        storeId: invite.userId, // This should be the actual storeId from the invite
+        storeId: invite.storeId,
+        clientId: inviter.clientId,
       },
     });
 
@@ -1406,7 +1066,7 @@ export class AuthService {
     try {
       await this.permissionsService.assignDefaultPermissions(
         user.id,
-        invite.userId, // This should be the actual storeId
+        invite.storeId,
       );
     } catch (error) {
       console.error('Failed to assign default permissions:', error);
@@ -1417,6 +1077,7 @@ export class AuthService {
       await this.prisma.notifications.create({
         data: {
           userId: invite.userId,
+          clientId: inviter.clientId,
           title: 'Account Created',
           message: `${firstName} ${lastName} has created an account as an employee.`,
           read: false,
@@ -1432,6 +1093,7 @@ export class AuthService {
     await this.prisma.auditLogs.create({
       data: {
         userId: user.id,
+        clientId: inviter.clientId,
         action: 'user_created',
         resource: 'auth',
         details: { role: invite.role, email: invite.email },
@@ -1494,34 +1156,11 @@ export class AuthService {
       // Get user permissions
       let userPermissions: any = null;
       try {
-        if (user.clientId) {
-          // For tenant users, get permissions from their tenant database
-          const credentials = await this.multiTenantService[
-            'getTenantCredentials'
-          ](user.clientId);
-          if (credentials) {
-            const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-            const tenantPrisma = getTenantPrismaClient(
-              user.clientId,
-              tenantDatabaseUrl,
-            );
-            // Get permissions for all stores the user has access to
-            const permissions =
-              await this.permissionsService.getUserPermissionsWithClient(
-                tenantPrisma,
-                user.id,
-              );
-            userPermissions = permissions;
-          }
-        } else {
-          // For master database users (super_admin, admin), get permissions from master database
-          userPermissions = await this.permissionsService.getUserPermissions(
-            user.id,
-          );
-        }
+        userPermissions = await this.permissionsService.getUserPermissions(
+          user.id,
+        );
       } catch (error) {
         console.error('Failed to get user permissions:', error);
-        // Don't fail if permissions fetch fails, just set to empty
         userPermissions = {
           userId: user.id,
           permissions: [],
@@ -1529,18 +1168,9 @@ export class AuthService {
         };
       }
 
-      const credentials = await this.multiTenantService['getTenantCredentials'](
-        user.clientId,
-      );
-      let tenantPrisma;
-      if (credentials) {
-        const tenantDatabaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${credentials.databaseName}`;
-        tenantPrisma = getTenantPrismaClient(user.clientId, tenantDatabaseUrl);
-      }
-
       const effectiveExclusions =
         await this.permissionsService.getEffectiveExclusionsForUser(
-          tenantPrisma,
+          this.prisma,
           user.id,
         );
       // console.log('effectiveExclusions', effectiveExclusions);
@@ -1779,20 +1409,11 @@ export class AuthService {
     });
 
     if (!defaultClient) {
-      const databaseUrl = process.env.DATABASE_URL;
-      if (!databaseUrl) {
-        console.error('Database URL is not configured');
-        throw new InternalServerErrorException(
-          'Database URL is not configured',
-        );
-      }
-
       defaultClient = await this.prisma.clients.create({
         data: {
           name: 'Default Client',
           email: 'default@accurack.com',
           tier: 'free',
-          databaseUrl: databaseUrl,
         },
       });
     }
@@ -1804,7 +1425,6 @@ export class AuthService {
     const rollbackActions: (() => Promise<void>)[] = [];
     let client: any;
     let user: any;
-    let databaseUrl = '';
 
     try {
       // Step 1: Validate user and client don't exist
@@ -1814,29 +1434,14 @@ export class AuthService {
       client = await this.createClientRecord(dto);
       rollbackActions.push(() => this.rollbackClientRecord(client.id));
 
-      // Step 3: Create tenant database
-      await this.createTenantDatabase(client);
-      rollbackActions.push(() => this.rollbackTenantDatabase(client.id));
-
-      // Step 4: Update client with database URL
-      databaseUrl = await this.updateClientWithDatabaseUrl(client.id);
-
-      // Step 5: Create super admin user
+      // Step 3: Create super admin user
       user = await this.createSuperAdminUser(dto, client.id);
       rollbackActions.push(() => this.rollbackUserRecord(user.id));
 
-      // Step 6: Sync records to tenant database
-      await this.syncRecordsToTenantDatabase(
-        client,
-        user,
-        databaseUrl,
-        dto.password,
-      );
-
-      // Step 7: Assign permissions and send email
+      // Step 4: Assign permissions and send email
       await this.assignPermissionsAndSendEmail(user, dto);
 
-      // Step 8: Activate user
+      // Step 5: Activate user
       await this.activateUser(user.id, client.id);
 
       return {
@@ -1910,34 +1515,6 @@ export class AuthService {
     });
   }
 
-  private async createTenantDatabase(client: any) {
-    await this.multiTenantService.createTenantDatabase(client.id, {
-      id: client.id,
-      name: client.name,
-      email: client.email,
-      phone: client.phone,
-      address: client.address,
-      status: client.status,
-      tier: client.tier,
-    });
-  }
-
-  private async updateClientWithDatabaseUrl(clientId: string): Promise<string> {
-    const credentials =
-      await this.multiTenantService.getTenantCredentials(clientId);
-    let databaseUrl = '';
-
-    if (credentials) {
-      databaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${credentials.host}:${credentials.port}/${credentials.databaseName}`;
-      await this.prisma.clients.update({
-        where: { id: clientId },
-        data: { databaseUrl },
-      });
-    }
-
-    return databaseUrl;
-  }
-
   private async createSuperAdminUser(
     dto: CreateClientWithSuperAdminDto,
     clientId: string,
@@ -1978,45 +1555,6 @@ export class AuthService {
     });
   }
 
-  private async syncRecordsToTenantDatabase(
-    client: any,
-    user: any,
-    databaseUrl: string,
-    password: string,
-  ) {
-    const passwordHash = await bcrypt.hash(password, 10);
-    const otp = this.generateOtp();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    await this.multiTenantService.ensureClientRecordExists(client.id, {
-      id: client.id,
-      name: client.name,
-      email: client.email,
-      phone: client.phone,
-      address: client.address,
-      status: client.status,
-      tier: client.tier,
-      databaseUrl,
-      createdAt: new Date(),
-    });
-
-    await this.multiTenantService.ensureUserRecordExists(client.id, {
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      passwordHash,
-      role: user.role,
-      clientId: user.clientId,
-      status: user.status,
-      otp,
-      otpExpiresAt,
-      isOtpUsed: false,
-      excludedPermissions: user.excludedPermissions,
-      createdAt: new Date(),
-    });
-  }
-
   private async assignPermissionsAndSendEmail(
     user: any,
     dto: CreateClientWithSuperAdminDto,
@@ -2042,13 +1580,6 @@ export class AuthService {
       where: { id: userId },
       data: { status: Status.active },
     });
-
-    // Activate user in the tenant database
-    await this.multiTenantService.updateUserStatus(
-      clientId,
-      userId,
-      Status.active,
-    );
   }
 
   private async executeRollbacks(rollbackActions: (() => Promise<void>)[]) {
@@ -2068,15 +1599,6 @@ export class AuthService {
       console.log(`Rolled back client record: ${clientId}`);
     } catch (error) {
       console.error(`Failed to rollback client record ${clientId}:`, error);
-    }
-  }
-
-  private async rollbackTenantDatabase(clientId: string) {
-    try {
-      await this.multiTenantService.deleteTenantDatabase(clientId);
-      console.log(`Rolled back tenant database: ${clientId}`);
-    } catch (error) {
-      console.error(`Failed to rollback tenant database ${clientId}:`, error);
     }
   }
 
@@ -2279,22 +1801,9 @@ export class AuthService {
    */
   async testSuperAdminAccess(user: any) {
     try {
-      // Get the tenant context to see which DB we're connected to
-      let tenantInfo = 'No tenant context';
-      try {
-        if (user.clientId) {
-          const tenantConnection =
-            await this.multiTenantService.getTenantConnection(user.clientId);
-          tenantInfo = tenantConnection
-            ? 'Tenant context available'
-            : 'No tenant context';
-        }
-      } catch (error) {
-        tenantInfo = 'Tenant context unavailable';
-      }
-
-      // This would use tenant-specific Prisma client via TenantContextService
-      // For now, let's just return user info and JWT token contents
+      const tenantInfo = user.clientId
+        ? `Single DB mode — user belongs to client ${user.clientId}`
+        : 'No tenant context';
       return {
         success: true,
         message: 'Super admin access test completed',
@@ -2353,8 +1862,7 @@ export class AuthService {
         );
       }
 
-      const prisma = await this.tenantContext.getPrismaClient();
-      const user = await prisma.users.findUnique({
+      const user = await this.prisma.users.findUnique({
         where: { id: userId },
         select: {
           id: true,
@@ -2398,15 +1906,16 @@ export class AuthService {
       const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
       // Update password in database
-      await prisma.users.update({
+      await this.prisma.users.update({
         where: { id: userId },
         data: { passwordHash: newPasswordHash },
       });
 
       // Create audit log
-      await prisma.auditLogs.create({
+      await this.prisma.auditLogs.create({
         data: {
           userId: user.id,
+          clientId: user.clientId,
           action: 'password_changed',
           resource: 'auth',
           details: {

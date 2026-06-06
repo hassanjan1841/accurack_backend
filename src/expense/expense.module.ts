@@ -9,7 +9,7 @@ import { PermissionsService } from 'src/common';
 import { JwtStrategy } from 'src/strategies/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { PrismaClientModule } from 'src/prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
@@ -19,7 +19,7 @@ import { PrismaService } from '../prisma/prisma.service';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '15m' },
     }),
-    PrismaClientModule,
+    PrismaModule,
     TenantModule,
   ],
   controllers: [

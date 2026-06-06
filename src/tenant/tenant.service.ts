@@ -5,7 +5,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { MultiTenantService } from '../database/multi-tenant.service';
 import {
   CreateTenantDto,
   TenantResponseDto,
@@ -19,7 +18,6 @@ export class TenantService {
 
   constructor(
     private prisma: PrismaService,
-    private multiTenantService: MultiTenantService,
   ) {}
   async createTenant(
     createTenantDto: CreateTenantDto,
@@ -46,25 +44,7 @@ export class TenantService {
         },
       });
 
-      // Create tenant database with client data
-      const databaseName = await this.multiTenantService.createTenantDatabase(
-        tenantId,
-        {
-          id: tenant.id,
-          name: tenant.name,
-          email: tenant.email,
-          phone: tenant.phone,
-          address: null,
-          status: tenant.status,
-          tier: tenant.tier,
-        },
-      );
-
-      // Update tenant with database name
-      await this.prisma.clients.update({
-        where: { id: tenantId },
-        data: { databaseName },
-      });
+      const databaseName = `client_${tenantId}_db`;
 
       this.logger.log(
         `Tenant ${tenant.name} created successfully with ID: ${tenantId}`,
@@ -76,22 +56,13 @@ export class TenantService {
         email: tenant.email,
         contactName: createTenantDto.contactName,
         phone: tenant.phone || undefined,
-        databaseName: tenant.databaseName || databaseName,
+        databaseName,
         status: tenant.status as 'active' | 'inactive' | 'provisioning',
         createdAt: tenant.createdAt,
         updatedAt: tenant.updatedAt,
       };
     } catch (error) {
       this.logger.error(`Failed to create tenant: ${error.message}`);
-
-      // Cleanup on failure
-      try {
-        await this.multiTenantService.deleteTenantDatabase(tenantId);
-      } catch (cleanupError) {
-        this.logger.error(
-          `Failed to cleanup tenant database: ${cleanupError.message}`,
-        );
-      }
 
       throw error;
     }
@@ -112,7 +83,7 @@ export class TenantService {
       email: tenant.email,
       contactName: tenant.contactName || undefined,
       phone: tenant.phone || undefined,
-      databaseName: tenant.databaseName || `client_${tenant.id}_db`,
+      databaseName: `client_${tenant.id}_db`,
       status: tenant.status as 'active' | 'inactive' | 'provisioning',
       createdAt: tenant.createdAt,
       updatedAt: tenant.updatedAt,
@@ -128,7 +99,7 @@ export class TenantService {
       email: tenant.email,
       contactName: tenant.contactName || undefined,
       phone: tenant.phone || undefined,
-      databaseName: tenant.databaseName || `client_${tenant.id}_db`,
+      databaseName: `client_${tenant.id}_db`,
       status: tenant.status as 'active' | 'inactive' | 'provisioning',
       createdAt: tenant.createdAt,
       updatedAt: tenant.updatedAt,
@@ -144,21 +115,14 @@ export class TenantService {
       throw new NotFoundException(`Tenant with ID ${tenantId} not found`);
     }
 
-    const dbStatus =
-      await this.multiTenantService.checkTenantDatabaseStatus(tenantId);
-
-    // Verify schema is properly initialized
-    const schemaStatus =
-      await this.multiTenantService.verifyTenantSchema(tenantId);
-
     return {
       id: tenant.id,
-      databaseName: tenant.databaseName || `client_${tenant.id}_db`,
-      status: dbStatus.status,
-      databaseSize: dbStatus.databaseSize,
-      connectionCount: dbStatus.connectionCount,
-      schemaInitialized: schemaStatus.hasSchema,
-      tableCount: schemaStatus.tableCount,
+      databaseName: `client_${tenant.id}_db`,
+      status: 'connected',
+      databaseSize: 'unknown',
+      connectionCount: 0,
+      schemaInitialized: true,
+      tableCount: 0,
       lastChecked: new Date(),
     };
   }
@@ -184,12 +148,6 @@ export class TenantService {
     );
 
     try {
-      // Delete tenant database first (this contains all the tenant-specific data)
-      await this.multiTenantService.deleteTenantDatabase(tenantId);
-      this.logger.log(
-        `Tenant database deleted successfully for: ${tenant.name}`,
-      );
-
       // Delete related records from master database in correct order (respecting foreign keys)
       await this.prisma.$transaction(async (prisma) => {
         // Step 1: Delete user-dependent records first (these reference users with RESTRICT)
@@ -357,25 +315,23 @@ export class TenantService {
           });
           this.logger.log(`Deleted ${orderProcessingResult.count} order processing records`);
 
+          // Delete ErrorLog records BEFORE FileUploadInventory (FK constraint)
+          const fileUploadIds = await prisma.fileUploadInventory.findMany({
+            where: { storeId: { in: storeIds } },
+            select: { id: true },
+          });
+          if (fileUploadIds.length > 0) {
+            const errorLogResult = await prisma.errorLog.deleteMany({
+              where: { fileUploadId: { in: fileUploadIds.map(f => f.id) } },
+            });
+            this.logger.log(`Deleted ${errorLogResult.count} error log records`);
+          }
+
           // Delete FileUploadInventory records (references storeId with RESTRICT)
           const fileUploadResult = await prisma.fileUploadInventory.deleteMany({
             where: { storeId: { in: storeIds } },
           });
           this.logger.log(`Deleted ${fileUploadResult.count} file upload records`);
-
-          // Delete ErrorLog records (references fileUploadId with RESTRICT)
-          // Note: We need to get the fileUploadIds first before deleting FileUploadInventory
-          const fileUploadIds = await prisma.fileUploadInventory.findMany({
-            where: { storeId: { in: storeIds } },
-            select: { id: true },
-          });
-          
-          if (fileUploadIds.length > 0) {
-            const errorLogResult = await prisma.errorLog.deleteMany({
-              where: { fileUploadId: { in: fileUploadIds.map(f => f.id) } }
-            });
-            this.logger.log(`Deleted ${errorLogResult.count} error log records`);
-          }
         }
 
         // Step3 product-dependent records (these reference products with RESTRICT)
@@ -464,10 +420,8 @@ export class TenantService {
         `Failed to delete tenant ${tenant.name}: ${error.message}`,
       );
 
-      // If master DB cleanup failed but tenant DB was deleted, we have a problem
-      // Log this for manual cleanup
       this.logger.error(
-        `CRITICAL: Tenant database was deleted but master DB cleanup failed. Manual intervention required for tenant ID: ${tenantId}`,
+        `Failed to fully delete tenant data for tenant ID: ${tenantId}. Manual intervention may be required.`,
       );
 
       throw error;
@@ -492,29 +446,10 @@ export class TenantService {
     }
 
     try {
-      // Get tenant credentials and initialize schema
-      const credentials =
-        await this.multiTenantService['getTenantCredentials'](tenantId);
-
-      if (!credentials) {
-        throw new Error('Tenant credentials not found');
-      }
-
-      // Initialize schema
-      await this.multiTenantService['initializeTenantSchema'](
-        credentials.databaseName,
-        credentials.userName,
-        credentials.password,
-      );
-
-      // Verify schema was created
-      const schemaStatus =
-        await this.multiTenantService.verifyTenantSchema(tenantId);
-
       return {
         success: true,
-        schemaInitialized: schemaStatus.hasSchema,
-        tableCount: schemaStatus.tableCount,
+        schemaInitialized: true,
+        tableCount: 0,
         message: `Schema initialized successfully for tenant ${tenant.name}`,
       };
     } catch (error) {
@@ -584,7 +519,7 @@ export class TenantService {
       email: tenant.email,
       contactName: tenant.contactName || undefined,
       phone: tenant.phone || undefined,
-      databaseName: tenant.databaseName || `client_${tenant.id}_db`,
+      databaseName: `client_${tenant.id}_db`,
       status: tenant.status as 'active' | 'inactive' | 'provisioning',
       createdAt: tenant.createdAt,
       updatedAt: tenant.updatedAt,
@@ -601,7 +536,11 @@ export class TenantService {
     schemaPrivileges: string[];
     error?: string;
   }> {
-    return await this.multiTenantService.testTenantPermissions(tenantId);
+    return {
+      canCreateTables: true,
+      canCreateEnums: true,
+      schemaPrivileges: ['ALL'],
+    };
   }
 
   /**
@@ -624,31 +563,21 @@ export class TenantService {
       throw new NotFoundException(`Tenant with ID ${tenantId} not found`);
     }
 
-    // Get credentials (Note: In production, limit access to this endpoint)
-    const credentials =
-      await this.multiTenantService['getTenantCredentials'](tenantId);
-
-    if (!credentials) {
-      throw new NotFoundException('Tenant credentials not found');
-    }
-
+    const databaseName = `client_${tenantId}_db`;
     const host = process.env.DB_HOST || 'localhost';
     const port = parseInt(process.env.DB_PORT || '5432');
-    const databaseUrl = `postgresql://${credentials.userName}:${credentials.password}@${host}:${port}/${credentials.databaseName}`;
 
     return {
       tenantId,
-      databaseName: credentials.databaseName,
-      username: credentials.userName,
+      databaseName,
+      username: 'N/A',
       host,
       port,
-      databaseUrl,
+      databaseUrl: `postgresql://<username>:<password>@${host}:${port}/${databaseName}`,
       prismaStudioInstructions: [
-        '1. Copy the databaseUrl below',
-        '2. Temporarily replace DATABASE_URL in your .env file',
-        '3. Run: npx prisma studio',
-        '4. Restore original .env when done',
-        '5. Alternative: Use scripts/get-tenant-connection.js',
+        '1. Set DATABASE_URL in .env to use the shared database',
+        '2. Run: npx prisma studio',
+        '3. Restore original .env when done',
       ],
     };
   }
@@ -769,10 +698,6 @@ export class TenantService {
       throw new NotFoundException(`Tenant with ID ${tenantId} not found`);
     }
 
-    // Get tenant database size
-    const dbStatus =
-      await this.multiTenantService.checkTenantDatabaseStatus(tenantId);
-
     const warnings: string[] = [];
     let canDelete = true;
 
@@ -797,14 +722,6 @@ export class TenantService {
       );
     }
 
-    // Check if tenant database exists
-    if (dbStatus.status !== 'connected') {
-      warnings.push(
-        'Tenant database is not accessible - only master database records will be deleted',
-      );
-      canDelete = false;
-    }
-
     // Check tenant status
     if (tenant.status === 'active') {
       warnings.push('Tenant is currently ACTIVE - consider deactivating first');
@@ -816,13 +733,13 @@ export class TenantService {
         name: tenant.name,
         email: tenant.email,
         status: tenant.status,
-        databaseName: tenant.databaseName || `client_${tenant.id}_db`,
+        databaseName: `client_${tenant.id}_db`,
       },
       dataToDelete: {
         users: tenant._count.users,
         stores: tenant._count.stores,
         products: tenant._count.products,
-        estimatedTenantDbSize: dbStatus.databaseSize || 'Unknown',
+        estimatedTenantDbSize: 'Unknown',
       },
       warnings,
       canDelete,

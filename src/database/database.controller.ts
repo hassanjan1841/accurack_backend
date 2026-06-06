@@ -1,6 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { PrismaClientService } from '../prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { MultiTenantService } from './multi-tenant.service';
 import { UseMasterDB } from '../common';
 
@@ -9,7 +9,7 @@ import { UseMasterDB } from '../common';
 @UseMasterDB()
 export class DatabaseController {
   constructor(
-    private readonly prisma: PrismaClientService,
+    private readonly prisma: PrismaService,
     private readonly multiTenantService: MultiTenantService,
   ) {}
 

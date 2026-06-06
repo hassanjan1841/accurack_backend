@@ -3,86 +3,121 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Clients {
-  id              String            @id @default(uuid())
-  name            String
-  email           String            @unique
-  phone           String?
-  address         String?
-  contactName     String?
-  databaseUrl     String?
-  databaseName    String?
-  tier            Tier
-  dataSizeMB      String?
-  businessId      String?
-  status          Status            @default(active)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  business        Business?
-  customers       Customer[]
-  products        Products[]
-  sales           Sales[]
-  stores          Stores[]
-  users           Users[]
-  orderProcessing OrderProcessing[]
-  expenseDirectories ExpenseDirectory[] @relation("ExpenseDirectoryToClient") // Add this
-  expenseSheets ExpenseSheet[] @relation("ExpenseSheetToClient") // Add this
-  saleDraft       SalesDraft[]
+  id                  String                @id @default(uuid())
+  name                String
+  email               String                @unique
+  phone               String?
+  address             String?
+  contactName         String?
+  tier                Tier
+  dataSizeMB          String?
+  businessId          String?
+  status              Status                @default(active)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  business            Business?
+  customers           Customer[]
+  products            Products[]
+  sales               Sales[]
+  stores              Stores[]
+  users               Users[]
+  orderProcessing     OrderProcessing[]
+  expenseDirectories  ExpenseDirectory[]    @relation("ExpenseDirectoryToClient") // Add this
+  expenseSheets       ExpenseSheet[]        @relation("ExpenseSheetToClient") // Add this
+  saleDraft           SalesDraft[]
+  SaleAdjustment      SaleAdjustment[]
+  SaleItem            SaleItem[]
+  SalesDraftItems     SalesDraftItems[]
+  Invoice             Invoice[]
+  CustomField         CustomField[]
+  BalanceSheet        BalanceSheet[]
+  SaleReturn          SaleReturn[]
+  StoreSettings       StoreSettings[]
+  UserStoreMap        UserStoreMap[]
+  InviteLinks         InviteLinks[]
+  Permission          Permission[]
+  RoleTemplate        RoleTemplate[]
+  UserRole            UserRole[]
+  Notifications       Notifications[]
+  AuditLogs           AuditLogs[]
+  ApiTokens           ApiTokens[]
+  PasswordResetTokens PasswordResetTokens[]
+  Suppliers           Suppliers[]
+  PurchaseOrders      PurchaseOrders[]
+  Expenses            Expenses[]
+  Reports             Reports[]
+  ProductSupplier     ProductSupplier[]
+  Category            Category[]
+  Pack                Pack[]
+  FileUploadInventory FileUploadInventory[]
+  ErrorLog            ErrorLog[]
+  FileUploadSales     FileUploadSales[]
+  TaxCode             TaxCode[]
+  TaxType             TaxType[]
+  Region              Region[]
+  TaxRate             TaxRate[]
+  TaxAssignment       TaxAssignment[]
+  SaleHistory         SaleHistory[]
+  ExpenseColumn       ExpenseColumn[]
+  ExpenseEntry        ExpenseEntry[]
+  ExpenseEntryValue   ExpenseEntryValue[]
 }
 
 model Users {
-  id                   String                @id @default(uuid())
-  googleId             String?               @unique
-  firstName            String
-  lastName             String
-  email                String                @unique
-  passwordHash         String?
-  googleRefreshToken   String?
-  otp                  String?
-  otpExpiresAt         DateTime?
-  isOtpUsed            Boolean?              @default(false)
-  role                 String?
-  clientId             String
-  status               Status                @default(active)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  businessId           String?
-  employeeCode         String?               @unique
-  position             String?
-  department           String?
-  phone                String?
-  excludedPermissions  Json?                 @map("excludedPermissions")
-  apiTokens            ApiTokens[]
-  auditLogs            AuditLogs[]
-  expenses             Expenses[]
-  inviteLinks          InviteLinks[]
-  notifications        Notifications[]
-  passwordResetTokens  PasswordResetTokens[]
-  purchaseOrders       PurchaseOrders[]
-  saleAdjustments      SaleAdjustment[]
-  SaleHistory          SaleHistory[]
-  processedReturns     SaleReturn[]
-  sales                Sales[]
-  validatedSales       Sales[]               @relation("ValidatedSales")
-  stores               UserStoreMap[]
-  business             Business?             @relation(fields: [businessId], references: [id])
-  client               Clients               @relation(fields: [clientId], references: [id])
-  grantedPermissions   Permission[]          @relation("PermissionGrantedBy")
-  permissions          Permission[]          @relation("UserPermissions")
-  createdRoleTemplates RoleTemplate[]        @relation("CreatedRoleTemplates")
-  assignedUserRoles    UserRole[]            @relation("AssignedUserRoles")
-  userRoles            UserRole[]
-  drivenOrders         OrderProcessing[]     @relation("DriverOrders")
-  validatedOrders      OrderProcessing[]     @relation("ValidatedOrders")
-  expenseDirectoriesCreated ExpenseDirectory[] @relation("ExpenseDirectoryCreator") // Add this
-  expenseSheetsCreated ExpenseSheet[] @relation("ExpenseSheetCreator") // Add this
-  expenseEntriesCreated ExpenseEntry[] @relation("ExpenseEntryCreator") // Add this
-  expenseEntriesApproved ExpenseEntry[] @relation("ExpenseEntryApprover") // Add this
-  saleDraft            SalesDraft[]
+  id                        String                @id @default(uuid())
+  googleId                  String?               @unique
+  firstName                 String
+  lastName                  String
+  email                     String                @unique
+  passwordHash              String?
+  googleRefreshToken        String?
+  otp                       String?
+  otpExpiresAt              DateTime?
+  isOtpUsed                 Boolean?              @default(false)
+  role                      String?
+  clientId                  String
+  status                    Status                @default(active)
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  businessId                String?
+  employeeCode              String?               @unique
+  position                  String?
+  department                String?
+  phone                     String?
+  excludedPermissions       Json?                 @map("excludedPermissions")
+  apiTokens                 ApiTokens[]
+  auditLogs                 AuditLogs[]
+  expenses                  Expenses[]
+  inviteLinks               InviteLinks[]
+  notifications             Notifications[]
+  passwordResetTokens       PasswordResetTokens[]
+  purchaseOrders            PurchaseOrders[]
+  saleAdjustments           SaleAdjustment[]
+  SaleHistory               SaleHistory[]
+  processedReturns          SaleReturn[]
+  sales                     Sales[]
+  validatedSales            Sales[]               @relation("ValidatedSales")
+  stores                    UserStoreMap[]
+  business                  Business?             @relation(fields: [businessId], references: [id])
+  client                    Clients               @relation(fields: [clientId], references: [id])
+  grantedPermissions        Permission[]          @relation("PermissionGrantedBy")
+  permissions               Permission[]          @relation("UserPermissions")
+  createdRoleTemplates      RoleTemplate[]        @relation("CreatedRoleTemplates")
+  assignedUserRoles         UserRole[]            @relation("AssignedUserRoles")
+  userRoles                 UserRole[]
+  drivenOrders              OrderProcessing[]     @relation("DriverOrders")
+  validatedOrders           OrderProcessing[]     @relation("ValidatedOrders")
+  expenseDirectoriesCreated ExpenseDirectory[]    @relation("ExpenseDirectoryCreator") // Add this
+  expenseSheetsCreated      ExpenseSheet[]        @relation("ExpenseSheetCreator") // Add this
+  expenseEntriesCreated     ExpenseEntry[]        @relation("ExpenseEntryCreator") // Add this
+  expenseEntriesApproved    ExpenseEntry[]        @relation("ExpenseEntryApprover") // Add this
+  saleDraft                 SalesDraft[]
 }
 
 model Stores {
@@ -109,15 +144,16 @@ model Stores {
   settings            StoreSettings?
 
   expenseDirectories ExpenseDirectory[] @relation("ExpenseDirectoryToStore") // Add this
-  expenseSheets ExpenseSheet[] @relation("ExpenseSheetToStore") // Add this
-  business            Business?             @relation(fields: [businessId], references: [id])
-  client              Clients               @relation(fields: [clientId], references: [id])
-  suppliers           Suppliers[]
-  users               UserStoreMap[]
-  permissions         Permission[]
-  orderProcessing     OrderProcessing[]
-  saleHistory         SaleHistory[]
-  saleDraft           SalesDraft[]
+  expenseSheets      ExpenseSheet[]     @relation("ExpenseSheetToStore") // Add this
+  business           Business?          @relation(fields: [businessId], references: [id])
+  client             Clients            @relation(fields: [clientId], references: [id])
+  suppliers          Suppliers[]
+  users              UserStoreMap[]
+  permissions        Permission[]
+  orderProcessing    OrderProcessing[]
+  saleHistory        SaleHistory[]
+  saleDraft          SalesDraft[]
+  inviteLinks        InviteLinks[]
 }
 
 model Business {
@@ -157,6 +193,8 @@ model SaleAdjustment {
   sale                 Sales              @relation(fields: [saleId], references: [id], onDelete: Cascade)
   store                Stores             @relation(fields: [storeId], references: [id])
   user                 Users              @relation(fields: [userId], references: [id])
+  clientId             String
+  client               Clients            @relation(fields: [clientId], references: [id])
 }
 
 model Customer {
@@ -175,7 +213,7 @@ model Customer {
   threshold             Float?            @default(0)
   storeId               String
   clientId              String
-  currentBalance        Float             @default(0) 
+  currentBalance        Float             @default(0)
   credits               Float             @default(0)
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
@@ -211,33 +249,33 @@ model Sales {
   updatedAt         DateTime         @updatedAt
   fileUploadSalesId String?
   validatorId       String?
-  
+
   // Shipping Address Fields (Optional)
-  shippingAddress   String?
-  shippingCountry   String?
-  shippingCity      String?
-  shippingZipCode   String?
-  shippingStreet    String?
-  shippingState     String?
-  
+  shippingAddress String?
+  shippingCountry String?
+  shippingCity    String?
+  shippingZipCode String?
+  shippingStreet  String?
+  shippingState   String?
+
   // Driver Assignment Fields (Optional)
   assignedDriverId   String?
-  assignedDriverName String?   
+  assignedDriverName String?
   driverType         DriverType?
-  
-  balanceSheets     BalanceSheet[]
-  invoices          Invoice[]
-  saleAdjustments   SaleAdjustment[]
-  saleItems         SaleItem[]
-  returns           SaleReturn[]
-  OrderProcessing   OrderProcessing[]
-  saleHistory       SaleHistory[]
-  client            Clients          @relation(fields: [clientId], references: [id])
-  customer          Customer?         @relation(fields: [customerId], references: [id])
-  fileUploadSales   FileUploadSales? @relation(fields: [fileUploadSalesId], references: [id])
-  store             Stores           @relation(fields: [storeId], references: [id])
-  user              Users            @relation(fields: [userId], references: [id])
-  validator         Users?           @relation("ValidatedSales", fields: [validatorId], references: [id])
+
+  balanceSheets   BalanceSheet[]
+  invoices        Invoice[]
+  saleAdjustments SaleAdjustment[]
+  saleItems       SaleItem[]
+  returns         SaleReturn[]
+  OrderProcessing OrderProcessing[]
+  saleHistory     SaleHistory[]
+  client          Clients           @relation(fields: [clientId], references: [id])
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  fileUploadSales FileUploadSales?  @relation(fields: [fileUploadSalesId], references: [id])
+  store           Stores            @relation(fields: [storeId], references: [id])
+  user            Users             @relation(fields: [userId], references: [id])
+  validator       Users?            @relation("ValidatedSales", fields: [validatorId], references: [id])
 }
 
 model SaleItem {
@@ -256,63 +294,66 @@ model SaleItem {
   updatedAt    DateTime  @updatedAt
   product      Products? @relation(fields: [productId], references: [id])
   sale         Sales     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  clientId     String
+  client       Clients   @relation(fields: [clientId], references: [id])
 }
 
-
 model SalesDraft {
-  id                String           @id @default(uuid())
+  id                  String            @id @default(uuid())
   customerPhoneNumber String
-  customerName      String?
-  customerMail      String?
-  customerAddress   String?
-  customerCountry   String?
-  customerState     String?
-  customerCity      String?
-  customerZipCode   String?
-  customerStreet    String?
-  storeId           String
-  userId            String?
-  clientId          String
-  paymentMethod     String?
-  source            String?
-  totalAmount       Float?
-  subTotalAmount    Float?
-  tax               Float?
-  discount          Float?
-  generateInvoice   Boolean          @default(false)
-  businessInfo      Boolean          @default(false)
-  cashierName       String?
-  shippingAddress   String?
-  shippingCountry   String?
-  shippingCity      String?
-  shippingState     String?
-  shippingZipCode   String?
-  shippingStreet    String?
-  assignedDriverId  String?
-  assignedDriverName String?
-  useCustomerAddress Boolean         @default(true)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  saleItems         SalesDraftItems[]
-  user              Users?           @relation(fields: [userId], references: [id])
-  store             Stores           @relation(fields: [storeId], references: [id])
-  client            Clients         @relation(fields: [clientId], references: [id])
+  customerName        String?
+  customerMail        String?
+  customerAddress     String?
+  customerCountry     String?
+  customerState       String?
+  customerCity        String?
+  customerZipCode     String?
+  customerStreet      String?
+  storeId             String
+  userId              String?
+  clientId            String
+  paymentMethod       String?
+  source              String?
+  totalAmount         Float?
+  subTotalAmount      Float?
+  tax                 Float?
+  discount            Float?
+  generateInvoice     Boolean           @default(false)
+  businessInfo        Boolean           @default(false)
+  cashierName         String?
+  shippingAddress     String?
+  shippingCountry     String?
+  shippingCity        String?
+  shippingState       String?
+  shippingZipCode     String?
+  shippingStreet      String?
+  assignedDriverId    String?
+  assignedDriverName  String?
+  useCustomerAddress  Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  saleItems           SalesDraftItems[]
+  user                Users?            @relation(fields: [userId], references: [id])
+  store               Stores            @relation(fields: [storeId], references: [id])
+  client              Clients           @relation(fields: [clientId], references: [id])
 }
 
 model SalesDraftItems {
-  id                String      @id @default(uuid())
-  saleDraftId       String 
-  productId         String?
-  pluUpc            String?
-  allowance         Float?
-  discount          Float?
-  quantity          Int?
-  packType          String?
-  packId            String?
-  total             Float?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  saleDraft         SalesDraft  @relation(fields: [saleDraftId], references: [id], onDelete: Cascade)
+  id          String     @id @default(uuid())
+  saleDraftId String
+  productId   String?
+  pluUpc      String?
+  allowance   Float?
+  discount    Float?
+  quantity    Int?
+  packType    String?
+  packId      String?
+  total       Float?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  saleDraft   SalesDraft @relation(fields: [saleDraftId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Clients    @relation(fields: [clientId], references: [id])
 }
 
 model Invoice {
@@ -346,6 +387,8 @@ model Invoice {
   business        Business      @relation(fields: [businessId], references: [id])
   customer        Customer      @relation(fields: [customerId], references: [id])
   sale            Sales         @relation(fields: [saleId], references: [id])
+  clientId        String
+  client          Clients       @relation(fields: [clientId], references: [id])
 }
 
 model CustomField {
@@ -356,6 +399,8 @@ model CustomField {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Clients  @relation(fields: [clientId], references: [id])
 }
 
 model BalanceSheet {
@@ -372,8 +417,9 @@ model BalanceSheet {
   customer        Customer          @relation(fields: [customerId], references: [id])
   sale            Sales?            @relation(fields: [saleId], references: [id])
   orderProcessing OrderProcessing[]
+  clientId        String
+  client          Clients           @relation(fields: [clientId], references: [id])
 }
-
 
 model SaleReturn {
   id                String         @id @default(uuid())
@@ -392,6 +438,8 @@ model SaleReturn {
   processedByUser   Users          @relation(fields: [processedBy], references: [id])
   product           Products?      @relation(fields: [productId], references: [id])
   sale              Sales          @relation(fields: [saleId], references: [id])
+  clientId          String
+  client            Clients        @relation(fields: [clientId], references: [id])
 }
 
 model StoreSettings {
@@ -406,6 +454,8 @@ model StoreSettings {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   store               Stores   @relation(fields: [storeId], references: [id])
+  clientId            String
+  client              Clients  @relation(fields: [clientId], references: [id])
 }
 
 model UserStoreMap {
@@ -416,6 +466,8 @@ model UserStoreMap {
   updatedAt DateTime @updatedAt
   store     Stores   @relation(fields: [storeId], references: [id])
   user      Users    @relation(fields: [userId], references: [id])
+  clientId  String
+  client    Clients  @relation(fields: [clientId], references: [id])
 
   @@unique([userId, storeId])
 }
@@ -426,10 +478,14 @@ model InviteLinks {
   token     String   @unique
   role      Role
   userId    String
+  storeId   String?
   status    Status   @default(pending)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
   user      Users    @relation(fields: [userId], references: [id])
+  store     Stores?  @relation(fields: [storeId], references: [id])
+  clientId  String
+  client    Clients  @relation(fields: [clientId], references: [id])
 }
 
 model Permission {
@@ -449,6 +505,8 @@ model Permission {
   grantedByUser Users     @relation("PermissionGrantedBy", fields: [grantedBy], references: [id])
   store         Stores?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
   user          Users     @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Clients   @relation(fields: [clientId], references: [id])
 
   @@unique([userId, storeId, resource, resourceId])
   @@index([userId, storeId])
@@ -458,7 +516,7 @@ model Permission {
 
 model RoleTemplate {
   id           String         @id @default(cuid())
-  name         String         @unique
+  name         String
   description  String?
   permissions  Json
   inheritsFrom String?
@@ -472,7 +530,10 @@ model RoleTemplate {
   parent       RoleTemplate?  @relation("RoleInheritance", fields: [inheritsFrom], references: [id])
   children     RoleTemplate[] @relation("RoleInheritance")
   userRoles    UserRole[]
+  clientId     String
+  client       Clients        @relation(fields: [clientId], references: [id])
 
+  @@unique([name, clientId])
   @@map("role_templates")
 }
 
@@ -488,6 +549,8 @@ model UserRole {
   assignedByUser Users        @relation("AssignedUserRoles", fields: [assignedBy], references: [id])
   roleTemplate   RoleTemplate @relation(fields: [roleTemplateId], references: [id], onDelete: Cascade)
   user           Users        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Clients      @relation(fields: [clientId], references: [id])
 
   @@unique([userId, roleTemplateId, storeId])
   @@map("user_roles")
@@ -502,6 +565,8 @@ model Notifications {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      Users    @relation(fields: [userId], references: [id])
+  clientId  String
+  client    Clients  @relation(fields: [clientId], references: [id])
 }
 
 model AuditLogs {
@@ -512,6 +577,8 @@ model AuditLogs {
   details   Json?
   createdAt DateTime @default(now())
   user      Users    @relation(fields: [userId], references: [id])
+  clientId  String
+  client    Clients  @relation(fields: [clientId], references: [id])
 }
 
 model ApiTokens {
@@ -523,6 +590,8 @@ model ApiTokens {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   user      Users     @relation(fields: [userId], references: [id])
+  clientId  String
+  client    Clients   @relation(fields: [clientId], references: [id])
 }
 
 model PasswordResetTokens {
@@ -533,6 +602,8 @@ model PasswordResetTokens {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
   user      Users     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Clients   @relation(fields: [clientId], references: [id])
 }
 
 model Suppliers {
@@ -548,6 +619,8 @@ model Suppliers {
   productSuppliers ProductSupplier[]
   purchaseOrders   PurchaseOrders[]
   store            Stores            @relation(fields: [storeId], references: [id])
+  clientId         String
+  client           Clients           @relation(fields: [clientId], references: [id])
 }
 
 model PurchaseOrders {
@@ -566,6 +639,8 @@ model PurchaseOrders {
   store      Stores    @relation(fields: [storeId], references: [id])
   supplier   Suppliers @relation(fields: [supplierId], references: [id])
   user       Users     @relation(fields: [userId], references: [id])
+  clientId   String
+  client     Clients   @relation(fields: [clientId], references: [id])
 }
 
 model Expenses {
@@ -579,6 +654,8 @@ model Expenses {
   updatedAt   DateTime @updatedAt
   store       Stores   @relation(fields: [storeId], references: [id])
   user        Users    @relation(fields: [userId], references: [id])
+  clientId    String
+  client      Clients  @relation(fields: [clientId], references: [id])
 }
 
 model Reports {
@@ -589,6 +666,8 @@ model Reports {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   store     Stores   @relation(fields: [storeId], references: [id])
+  clientId  String
+  client    Clients  @relation(fields: [clientId], references: [id])
 }
 
 model ProductSupplier {
@@ -603,14 +682,16 @@ model ProductSupplier {
   category   Category?     @relation(fields: [categoryId], references: [id])
   product    Products      @relation(fields: [productId], references: [id], onDelete: Cascade)
   supplier   Suppliers     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Clients       @relation(fields: [clientId], references: [id])
 
   @@unique([productId, supplierId])
 }
 
 model Category {
   id              String            @id @default(uuid())
-  name            String            @unique
-  code            String?           @unique
+  name            String
+  code            String?
   description     String?
   parentId        String?
   createdAt       DateTime          @default(now())
@@ -619,6 +700,11 @@ model Category {
   children        Category[]        @relation("CategoryHierarchy")
   ProductSupplier ProductSupplier[]
   products        Products[]
+  clientId        String
+  client          Clients           @relation(fields: [clientId], references: [id])
+
+  @@unique([name, clientId])
+  @@unique([code, clientId])
 }
 
 model Products {
@@ -637,7 +723,7 @@ model Products {
   msrpPrice              Float
   singleItemSellingPrice Float
   singleItemCostPrice    Float
-  minimumSellingQuantity Int      // Minimum quantity required for SINGLE ITEM sales (not applicable to pack sales)
+  minimumSellingQuantity Int // Minimum quantity required for SINGLE ITEM sales (not applicable to pack sales)
   clientId               String
   storeId                String
   discountAmount         Float
@@ -664,14 +750,16 @@ model Products {
 model Pack {
   id                     String   @id @default(uuid())
   productId              String
-  minimumSellingQuantity Int      // CRITICAL: This represents ITEMS PER PACK (e.g., 6 bottles per pack), NOT minimum packs to sell
-  totalPacksQuantity     Int      // Number of packs available in inventory
-  orderedPacksPrice      Float    // Price per pack (covers all items in the pack)
+  minimumSellingQuantity Int // CRITICAL: This represents ITEMS PER PACK (e.g., 6 bottles per pack), NOT minimum packs to sell
+  totalPacksQuantity     Int // Number of packs available in inventory
+  orderedPacksPrice      Float // Price per pack (covers all items in the pack)
   discountAmount         Float
   percentDiscount        Float
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
   product                Products @relation(fields: [productId], references: [id])
+  clientId               String
+  client                 Clients  @relation(fields: [clientId], references: [id])
 }
 
 model FileUploadInventory {
@@ -685,6 +773,8 @@ model FileUploadInventory {
   errorLogs  ErrorLog[]
   store      Stores?    @relation(fields: [storeId], references: [id])
   products   Products[]
+  clientId   String
+  client     Clients    @relation(fields: [clientId], references: [id])
 
   @@unique([storeId, fileHash])
 }
@@ -696,6 +786,8 @@ model ErrorLog {
   error        String
   createdAt    DateTime            @default(now())
   fileUpload   FileUploadInventory @relation(fields: [fileUploadId], references: [id])
+  clientId     String
+  client       Clients             @relation(fields: [clientId], references: [id])
 }
 
 model FileUploadSales {
@@ -706,38 +798,53 @@ model FileUploadSales {
   storeId    String?
   Store      Stores?  @relation(fields: [storeId], references: [id])
   Sale       Sales[]
+  clientId   String
+  client     Clients  @relation(fields: [clientId], references: [id])
 }
 
 model TaxCode {
   id          String    @id @default(uuid())
-  code        String    @unique
+  code        String
   description String
   taxTypeId   String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   taxType     TaxType   @relation(fields: [taxTypeId], references: [id])
   taxRates    TaxRate[]
+  clientId    String
+  client      Clients   @relation(fields: [clientId], references: [id])
+
+  @@unique([code, clientId])
 }
 
 model TaxType {
   id          String     @id @default(uuid())
-  name        String     @unique
+  name        String
   description String
   payer       PayerType?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   taxCodes    TaxCode[]
   taxRates    TaxRate[]
+  clientId    String
+  client      Clients    @relation(fields: [clientId], references: [id])
+
+  @@unique([name, clientId])
 }
 
 model Region {
   id          String    @id @default(uuid())
-  name        String    @unique
-  code        String    @unique
+  name        String
+  code        String
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   taxRates    TaxRate[]
+  clientId    String
+  client      Clients   @relation(fields: [clientId], references: [id])
+
+  @@unique([name, clientId])
+  @@unique([code, clientId])
 }
 
 model TaxRate {
@@ -755,6 +862,8 @@ model TaxRate {
   region        Region          @relation(fields: [regionId], references: [id])
   taxCode       TaxCode         @relation(fields: [taxCodeId], references: [id])
   taxType       TaxType         @relation(fields: [taxTypeId], references: [id])
+  clientId      String
+  client        Clients         @relation(fields: [clientId], references: [id])
 }
 
 model TaxAssignment {
@@ -767,44 +876,37 @@ model TaxAssignment {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   taxRate    TaxRate    @relation(fields: [taxRateId], references: [id])
-}
-
-model tenant_credentials {
-  tenant_id     String    @id @db.Uuid
-  database_name String    @db.VarChar(255)
-  username      String    @db.VarChar(255)
-  password      String    @db.VarChar(255)
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
-  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  clientId   String
+  client     Clients    @relation(fields: [clientId], references: [id])
 }
 
 model OrderProcessing {
-  id            String                @id @default(uuid())
-  orderNo       Int                   @unique @default(autoincrement())
-  saleId        String?
-  customerId    String
-  customerName  String
-  storeId       String
-  clientId      String
-  driverId      String?
-  driverName    String?
-  driverType    DriverType?
+  id                 String                @id @default(uuid())
+  orderNo            Int                   @unique @default(autoincrement())
+  saleId             String?
+  customerId         String
+  customerName       String
+  storeId            String
+  clientId           String
+  driverId           String?
+  driverName         String?
+  driverType         DriverType?
   cancellationReason String?
-  paymentAmount Float                 @default(0)
-  paymentType   PaymentMethod?
-  status        OrderProcessingStatus @default(SENT_FOR_VALIDATION)
-  isValidated   Boolean               @default(false)
-  validatorId   String?
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  
-  sale          Sales?        @relation(fields: [saleId], references: [id])
-  customer      Customer      @relation(fields: [customerId], references: [id])
-  store         Stores        @relation(fields: [storeId], references: [id])
-  client        Clients       @relation(fields: [clientId], references: [id])
-  driver        Users?        @relation("DriverOrders", fields: [driverId], references: [id])
-  validator     Users?        @relation("ValidatedOrders", fields: [validatorId], references: [id])
-  balanceSheet  BalanceSheet? @relation(fields: [balanceSheetId], references: [id])
+  paymentAmount      Float                 @default(0)
+  paymentType        PaymentMethod?
+  status             OrderProcessingStatus @default(SENT_FOR_VALIDATION)
+  isValidated        Boolean               @default(false)
+  validatorId        String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  sale           Sales?        @relation(fields: [saleId], references: [id])
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  store          Stores        @relation(fields: [storeId], references: [id])
+  client         Clients       @relation(fields: [clientId], references: [id])
+  driver         Users?        @relation("DriverOrders", fields: [driverId], references: [id])
+  validator      Users?        @relation("ValidatedOrders", fields: [validatorId], references: [id])
+  balanceSheet   BalanceSheet? @relation(fields: [balanceSheetId], references: [id])
   balanceSheetId String?
 }
 
@@ -976,9 +1078,11 @@ model SaleHistory {
   userAgent   String?
   createdAt   DateTime          @default(now())
 
-  sale  Sales  @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  user  Users  @relation(fields: [userId], references: [id])
-  store Stores @relation(fields: [storeId], references: [id])
+  sale     Sales   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  user     Users   @relation(fields: [userId], references: [id])
+  store    Stores  @relation(fields: [storeId], references: [id])
+  clientId String
+  client   Clients @relation(fields: [clientId], references: [id])
 
   @@map("sale_history")
 }
@@ -995,114 +1099,124 @@ enum OrderProcessingStatus {
 }
 
 model ExpenseDirectory {
-  id String @id @default(uuid())
-  name String
-  description String?
-  parentId String?
-  level Int // 1, 2, or 3
-  clientId String
-  storeId String
-  createdBy String
-  status ExpenseStatus @default(ACTIVE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime? // For trash functionality
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  parentId    String?
+  level       Int // 1, 2, or 3
+  clientId    String
+  storeId     String
+  createdBy   String
+  status      ExpenseStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime? // For trash functionality
 
-  store Stores? @relation("ExpenseDirectoryToStore", fields: [storeId], references: [id])
-  client Clients @relation("ExpenseDirectoryToClient", fields: [clientId], references: [id])
-  parent ExpenseDirectory? @relation("DirectoryHierarchy", fields: [parentId], references: [id])
-  children ExpenseDirectory[] @relation("DirectoryHierarchy")
-  sheets ExpenseSheet[]
-  createdByUser Users @relation("ExpenseDirectoryCreator", fields: [createdBy], references: [id])
+  store         Stores?            @relation("ExpenseDirectoryToStore", fields: [storeId], references: [id])
+  client        Clients            @relation("ExpenseDirectoryToClient", fields: [clientId], references: [id])
+  parent        ExpenseDirectory?  @relation("DirectoryHierarchy", fields: [parentId], references: [id])
+  children      ExpenseDirectory[] @relation("DirectoryHierarchy")
+  sheets        ExpenseSheet[]
+  createdByUser Users              @relation("ExpenseDirectoryCreator", fields: [createdBy], references: [id])
 }
+
 model ExpenseSheet {
-  id String @id @default(uuid())
-  name String
-  description String?
-  directoryId String
-  clientId String
-  storeId String?
-  createdBy String
-  status ExpenseStatus @default(ACTIVE)
-  isArchived Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  archivedAt DateTime?
- 
-  store Stores? @relation("ExpenseSheetToStore", fields: [storeId], references: [id])
-  client Clients @relation("ExpenseSheetToClient", fields: [clientId], references: [id])
-  directory ExpenseDirectory @relation(fields: [directoryId], references: [id])
-  columns ExpenseColumn[]
-  entries ExpenseEntry[]
-  createdByUser Users @relation("ExpenseSheetCreator", fields: [createdBy], references: [id])
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  directoryId String
+  clientId    String
+  storeId     String?
+  createdBy   String
+  status      ExpenseStatus @default(ACTIVE)
+  isArchived  Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  archivedAt  DateTime?
+
+  store         Stores?          @relation("ExpenseSheetToStore", fields: [storeId], references: [id])
+  client        Clients          @relation("ExpenseSheetToClient", fields: [clientId], references: [id])
+  directory     ExpenseDirectory @relation(fields: [directoryId], references: [id])
+  columns       ExpenseColumn[]
+  entries       ExpenseEntry[]
+  createdByUser Users            @relation("ExpenseSheetCreator", fields: [createdBy], references: [id])
 }
 
 model ExpenseColumn {
-  id String @id @default(uuid())
-  sheetId String
-  name String
-  columnType ExpenseColumnType
-  isRequired Boolean @default(false)
-  hasAutoSum Boolean @default(false)
-  orderIndex Int
-  metadata Json? // Store validation rules, options, etc.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
- 
-  sheet ExpenseSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
-  entryValues ExpenseEntryValue[]
+  id         String            @id @default(uuid())
+  sheetId    String
+  name       String
+  columnType ExpenseColumnType
+  isRequired Boolean           @default(false)
+  hasAutoSum Boolean           @default(false)
+  orderIndex Int
+  metadata   Json? // Store validation rules, options, etc.
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  sheet       ExpenseSheet        @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  entryValues ExpenseEntryValue[]
+  clientId    String
+  client      Clients             @relation(fields: [clientId], references: [id])
 }
+
 model ExpenseEntry {
-  id String @id @default(uuid())
-  sheetId String
-  createdBy String
-  status ExpenseEntryStatus @default(DRAFT)
-  approvedBy String?
-  approvedAt DateTime?
-  submittedAt DateTime?
-  amount Float? // Auto-calculated if has number columns
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
- 
-  sheet ExpenseSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
-  createdByUser Users @relation("ExpenseEntryCreator", fields: [createdBy], references: [id])
-  approvedByUser Users? @relation("ExpenseEntryApprover", fields: [approvedBy], references: [id])
-  values ExpenseEntryValue[]
+  id          String             @id @default(uuid())
+  sheetId     String
+  createdBy   String
+  status      ExpenseEntryStatus @default(DRAFT)
+  approvedBy  String?
+  approvedAt  DateTime?
+  submittedAt DateTime?
+  amount      Float? // Auto-calculated if has number columns
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  sheet          ExpenseSheet        @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  createdByUser  Users               @relation("ExpenseEntryCreator", fields: [createdBy], references: [id])
+  approvedByUser Users?              @relation("ExpenseEntryApprover", fields: [approvedBy], references: [id])
+  values         ExpenseEntryValue[]
+  clientId       String
+  client         Clients             @relation(fields: [clientId], references: [id])
 }
 
 model ExpenseEntryValue {
-  id String @id @default(uuid())
-  entryId String
-  columnId String
-  value String // Store all as string, convert based on column type
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
- 
-  entry ExpenseEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  column ExpenseColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
- 
-  @@unique([entryId, columnId])
-}
-enum ExpenseStatus {
-  ACTIVE
-  DELETED
-  ARCHIVED
-}
-enum ExpenseColumnType {
-  STRING
-  PHONE
-  LABEL
-  SHORT_TEXT
-  NUMBER
-  DATE
-  EMAIL
-  CURRENCY
-}
-enum ExpenseEntryStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED
-  REJECTED
+  id        String   @id @default(uuid())
+  entryId   String
+  columnId  String
+  value     String // Store all as string, convert based on column type
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entry    ExpenseEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  column   ExpenseColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Clients       @relation(fields: [clientId], references: [id])
+
+  @@unique([entryId, columnId])
 }
 
+enum ExpenseStatus {
+  ACTIVE
+  DELETED
+  ARCHIVED
+}
+
+enum ExpenseColumnType {
+  STRING
+  PHONE
+  LABEL
+  SHORT_TEXT
+  NUMBER
+  DATE
+  EMAIL
+  CURRENCY
+}
+
+enum ExpenseEntryStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}

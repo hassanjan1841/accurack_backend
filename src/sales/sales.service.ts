@@ -590,6 +590,7 @@ export class SalesService {
           await tx.saleItem.create({
             data: {
               saleId,
+              clientId: existingSale.clientId,
               productId: saleItemData.productId,
               pluUpc: saleItemData.pluUpc,
               productName: saleItemData.productName,
@@ -1039,6 +1040,7 @@ export class SalesService {
           data: {
             fileHash,
             storeId: store.id,
+            clientId: user.clientId,
             fileName: file.originalname,
           },
         });

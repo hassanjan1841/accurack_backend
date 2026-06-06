@@ -4,7 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaClientService } from 'src/prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   CreatePermissionDto,
   BulkAssignPermissionsDto,
@@ -33,7 +33,7 @@ export class PermissionsService {
   private readonly CACHE_TTL = 15 * 60; // 15 minutes
   private readonly CACHE_PREFIX = 'user_permissions:';
   constructor(
-    private prisma: PrismaClientService,
+    private prisma: PrismaService,
     private readonly tenantContext: TenantContextService,
   ) {}
 
@@ -65,7 +65,7 @@ export class PermissionsService {
       }
 
       for (const [key, template] of Object.entries(DEFAULT_ROLE_TEMPLATES)) {
-        const existing = await clientdb.roleTemplate.findUnique({
+        const existing = await clientdb.roleTemplate.findFirst({
           where: { name: template.name },
         });
 
@@ -384,10 +384,12 @@ export class PermissionsService {
           `Updated existing permission for ${dto.resource} - merged actions: [${mergedActions.join(', ')}] for user ${dto.userId}`,
         );
       } else {
+        const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
         // Create new permission with actions array
         const newPermission = await clientdb.permission.create({
           data: {
             userId: dto.userId,
+            clientId,
             storeId: normalizedStoreId,
             resource: dto.resource,
             actions: actionsArray,
@@ -946,9 +948,11 @@ export class PermissionsService {
         this.validatePermission(permission.resource, permission.action);
       }
       const clientdb = await this.tenantContext.getPrismaClient();
+      const { clientId: rtClientId } = this.tenantContext.getTenantInfo() as { clientId: string };
       const roleTemplate = await clientdb.roleTemplate.create({
         data: {
           name: dto.name,
+          clientId: rtClientId,
           description: dto.description,
           permissions: dto.permissions as any,
           inheritsFrom: dto.inheritsFrom,
@@ -1000,6 +1004,7 @@ export class PermissionsService {
             roleTemplateId: dto.roleTemplateId,
             storeId: dto.storeId || null,
             assignedBy,
+            clientId: (this.tenantContext.getTenantInfo() as any).clientId,
           },
         }),
       );
@@ -1521,6 +1526,7 @@ export class PermissionsService {
         data: {
           userId,
           storeId,
+          clientId: (this.tenantContext.getTenantInfo() as any).clientId,
         },
       });
 

@@ -22,6 +22,7 @@ export class CustomerService {
   // Customer Management
   async createCustomer(dto: CreateCustomerDto) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     // Check if customer already exists
     const existingCustomer = await prisma.customer.findUnique({
       where: { phoneNumber: dto.phoneNumber },
@@ -43,6 +44,7 @@ export class CustomerService {
       await tx.balanceSheet.create({
         data: {
           customerId: customer.id,
+          clientId,
           remainingAmount: 0,
           transactionType: TransactionType.ADJUSTMENT,
           amountPaid: 0,

@@ -4,7 +4,6 @@ import { PassportModule } from '@nestjs/passport';
 import { SupplierController } from './supplier.controller';
 import { SupplierService } from './supplier.service';
 import { JwtStrategy } from 'src/strategies/jwt.strategy';
-import { PrismaClientService } from 'src/prisma-client/prisma-client.service';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import { MultiTenantService } from '../database/multi-tenant.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,7 +22,6 @@ import { PermissionsService } from 'src/common';
   providers: [
     SupplierService,
     JwtStrategy,
-    PrismaClientService,
     TenantContextService, // Add tenant context
     MultiTenantService,   // Required by TenantContextService
     PrismaService,        // Required by TenantContextService

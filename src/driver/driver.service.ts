@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaClientService } from '../prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import {
   CreateOrderDto,
@@ -45,7 +45,7 @@ interface GetOrdersResponse {
 @Injectable()
 export class DriverService {
   constructor(
-    private readonly prisma: PrismaClientService,
+    private readonly prisma: PrismaService,
     private readonly tenantContext: TenantContextService,
   ) {}
 

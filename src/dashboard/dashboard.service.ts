@@ -1,12 +1,12 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaClientService } from '../prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import { RevenueSummaryQueryDto, RevenueSummaryResponseDto, SaleSummaryDto, SaleItemSummaryDto } from './dto/revenue-summary.dto';
 
 @Injectable()
 export class DashboardService {
   constructor(
-    private prisma: PrismaClientService,
+    private prisma: PrismaService,
     private readonly tenantContext: TenantContextService,
   ) {}
 

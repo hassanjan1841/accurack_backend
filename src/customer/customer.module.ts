@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CustomerController } from './customer.controller';
 import { CustomerService } from './customer.service';
-import { PrismaClientModule } from '../prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { CommonModule } from '../common/common.module';
 import { TenantContextService } from 'src/tenant/tenant-context.service';
@@ -20,7 +20,7 @@ import { InvoiceModule } from 'src/invoice/invoice.module';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '15m' },
     }),
-    PrismaClientModule,
+    PrismaModule,
     PermissionsModule,
     CommonModule,
     InvoiceModule,

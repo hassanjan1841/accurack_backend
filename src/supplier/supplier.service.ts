@@ -4,7 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaClientService } from 'src/prisma-client/prisma-client.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import { CreateSupplierDto, UpdateSupplierDto } from './dto/dto.supplier';
 import { Role, Status } from '@prisma/client';
@@ -12,7 +12,7 @@ import { Role, Status } from '@prisma/client';
 @Injectable()
 export class SupplierService {
   constructor(
-    private readonly prisma: PrismaClientService, // Keep for fallback/master DB operations
+    private readonly prisma: PrismaService, // Keep for fallback/master DB operations
     private readonly tenantContext: TenantContextService, // Add tenant context
   ) {}
 
@@ -38,6 +38,7 @@ export class SupplierService {
           phone: createSupplierDto.phone,
           address: createSupplierDto.address,
           storeId: createSupplierDto.storeId,
+          clientId: user.clientId,
           status: Status.active,
         },
         select: {

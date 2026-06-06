@@ -11,7 +11,7 @@ import { MultiTenantService } from 'src/database/multi-tenant.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { PrismaClientModule } from 'src/prisma-client/prisma-client.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 import { CommonModule } from 'src/common/common.module';
 
 @Module({
@@ -21,7 +21,7 @@ import { CommonModule } from 'src/common/common.module';
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '15m' },
     }),
-    PrismaClientModule,
+    PrismaModule,
     MailModule,
     PermissionsModule,
     CommonModule,

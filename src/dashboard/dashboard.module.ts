@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
-import { PrismaClientModule } from '../prisma-client/prisma-client.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from '../common/common.module';
 import { TenantContextService } from '../tenant/tenant-context.service';
 import { MultiTenantService } from '../database/multi-tenant.service';
@@ -11,7 +11,7 @@ import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
-    PrismaClientModule,
+    PrismaModule,
     CommonModule,
     PermissionsModule,
   ],

@@ -72,6 +72,7 @@ export class StoreService {
         const storeSettings = await prisma.storeSettings.create({
           data: {
             storeId: store.id,
+            clientId: user.clientId,
             currency,
             timezone,
           },
@@ -92,6 +93,7 @@ export class StoreService {
           data: {
             userId: user.id,
             storeId: store.id,
+            clientId: user.clientId,
           },
         });
 

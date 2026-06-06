@@ -29,7 +29,8 @@ export class TaxService {
   // --- TaxType CRUD ---
   async createTaxType(dto: CreateTaxTypeDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.taxType.create({ data: dto });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.taxType.create({ data: { ...dto, clientId } });
   }
   async getAllTaxTypes() {
     const prisma = await this.tenantContext.getPrismaClient();
@@ -53,7 +54,8 @@ export class TaxService {
   // --- TaxCode CRUD ---
   async createTaxCode(dto: CreateTaxCodeDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.taxCode.create({ data: dto });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.taxCode.create({ data: { ...dto, clientId } });
   }
   async getAllTaxCodes() {
     const prisma = await this.tenantContext.getPrismaClient();
@@ -77,7 +79,8 @@ export class TaxService {
   // --- Region CRUD ---
   async createRegion(dto: CreateRegionDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.region.create({ data: dto });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.region.create({ data: { ...dto, clientId } });
   }
   async getAllRegions() {
     const prisma = await this.tenantContext.getPrismaClient();
@@ -101,7 +104,8 @@ export class TaxService {
   // --- TaxRate CRUD ---
   async createTaxRate(dto: CreateTaxRateDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.taxRate.create({ data: dto });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.taxRate.create({ data: { ...dto, clientId } });
   }
 
   async getAllTaxRates() {
@@ -202,7 +206,8 @@ export class TaxService {
   // --- TaxAssignment CRUD ---
   async createTaxAssignment(dto: CreateTaxAssignmentDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    return prisma.taxAssignment.create({ data: dto });
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+    return prisma.taxAssignment.create({ data: { ...dto, clientId } });
   }
 
   async getAllTaxAssignments() {
@@ -234,18 +239,19 @@ export class TaxService {
    */
   async createTaxBundle(dto: CreateTaxBundleDto) {
     const prisma = await this.tenantContext.getPrismaClient();
-    // Check for duplicate TaxType by name
-    const existingType = await prisma.taxType.findUnique({
-      where: { name: dto.taxType.name },
+    const { clientId } = this.tenantContext.getTenantInfo();
+    // Check for duplicate TaxType by name (scoped to this client)
+    const existingType = await prisma.taxType.findFirst({
+      where: { name: dto.taxType.name, clientId: clientId ?? undefined },
     });
     if (existingType) {
       throw new BadRequestException(
         `TaxType with name '${dto.taxType.name}' already exists.`,
       );
     }
-    // Check for duplicate TaxCode by code
-    const existingCode = await prisma.taxCode.findUnique({
-      where: { code: dto.taxCode.code },
+    // Check for duplicate TaxCode by code (scoped to this client)
+    const existingCode = await prisma.taxCode.findFirst({
+      where: { code: dto.taxCode.code, clientId: clientId ?? undefined },
     });
     if (existingCode) {
       throw new BadRequestException(
@@ -255,11 +261,12 @@ export class TaxService {
     try {
       return await prisma.$transaction(async (tx) => {
         // Create TaxType
-        const taxType = await tx.taxType.create({ data: dto.taxType });
+        const taxType = await tx.taxType.create({ data: { ...dto.taxType, clientId: clientId! } });
         // Create TaxCode, link to TaxType
         const taxCode = await tx.taxCode.create({
           data: {
             ...dto.taxCode,
+            clientId: clientId!,
             taxTypeId: taxType.id,
           },
         });
@@ -267,6 +274,7 @@ export class TaxService {
         const taxRate = await tx.taxRate.create({
           data: {
             ...dto.taxRate,
+            clientId: clientId!,
             taxCodeId: taxCode.id,
           },
         });
@@ -359,6 +367,7 @@ export class TaxService {
    */
   async bulkAssignTaxes(assignments: AssignTaxDto[]) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     // Validate input: ensure all required fields are present
     if (
       !assignments ||
@@ -372,6 +381,7 @@ export class TaxService {
       data: assignments.map((a) => ({
         entityType: a.entityType,
         entityId: a.entityId,
+        clientId,
         taxRateId: a.taxRateId,
         entity: a.entity,
         assignedAt: new Date(),
@@ -394,6 +404,7 @@ export class TaxService {
     }[]
   ) {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
 
     if (!taxRateId || !Array.isArray(assignments) || assignments.length === 0) {
       throw new BadRequestException('Tax rate ID and assignments are required');
@@ -410,6 +421,7 @@ export class TaxService {
       const newAssignments = assignments.map((a) => ({
         entityType: a.entityType,
         entityId: a.entityId,
+        clientId,
         entity: a.entity || {},
         assignedAt: a.assignedAt || new Date(),
         taxRateId,

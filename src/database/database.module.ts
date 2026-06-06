@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { DatabaseController } from './database.controller';
 import { MultiTenantService } from './multi-tenant.service';
-import { PrismaClientModule } from '../prisma-client/prisma-client.module';
+import { PrismaService } from '../prisma/prisma.service';
 import { CommonModule } from '../common/common.module';
 
 @Module({
-  imports: [PrismaClientModule, CommonModule],
+  imports: [CommonModule],
   controllers: [DatabaseController],
-  providers: [MultiTenantService],
+  providers: [MultiTenantService, PrismaService],
   exports: [MultiTenantService],
 })
 export class DatabaseModule {}

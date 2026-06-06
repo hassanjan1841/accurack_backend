@@ -7,7 +7,6 @@ import { EnvValidation } from './utils/env-validation';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { ResponseInterceptor, GlobalExceptionFilter } from './common';
-import { disconnectAllTenantPrismaClients } from './tenant/prisma-tenant-cache';
 import * as basicAuth from 'express-basic-auth';
 import { Response, Request } from 'express';
 import * as fs from 'fs';
@@ -139,17 +138,5 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 4000);
 
-  // Graceful shutdown for tenant PrismaClients
-  process.on('SIGINT', async () => {
-    console.log('SIGINT received: closing tenant Prisma connections...');
-    await disconnectAllTenantPrismaClients();
-    process.exit(0);
-  });
-
-  process.on('SIGTERM', async () => {
-    console.log('SIGTERM received: closing tenant Prisma connections...');
-    await disconnectAllTenantPrismaClients();
-    process.exit(0);
-  });
 }
 bootstrap();

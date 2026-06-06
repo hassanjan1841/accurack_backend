@@ -320,6 +320,7 @@ export class StatusManagementService {
       await prisma.balanceSheet.create({
         data: {
           customerId: sale.customerId,
+          clientId: sale.clientId,
           saleId: sale.id,
           transactionType: TransactionType.PAYMENT,
           remainingAmount: sale.totalAmount,

@@ -94,6 +94,7 @@ export class EmployeeService {
       await prisma.userRole.create({
         data: {
           userId: user.id,
+          clientId: req.user.clientId,
           roleTemplateId: roleTemplate.id,
           assignedBy: req.user.id,
         },
@@ -136,6 +137,7 @@ export class EmployeeService {
       if (finalPermissions.length > 0) {
         const permissionData = finalPermissions.map((permission) => ({
           userId: user.id,
+          clientId: req.user.clientId,
           resource: permission.resource,
           actions: [permission.action],
           storeId: permission.storeId || null,
@@ -171,6 +173,7 @@ export class EmployeeService {
           const storeAssignments = validStoreIds.map((storeId) => ({
             userId: user.id,
             storeId,
+            clientId: req.user.clientId,
           }));
 
           // Create store assignments one by one to avoid transaction issues
@@ -312,6 +315,7 @@ export class EmployeeService {
   ) {
     // Get the tenant-specific Prisma client
     const clientdb = await this.tenantContext.getPrismaClient();
+    const { clientId: tenantClientId } = this.tenantContext.getTenantInfo() as { clientId: string };
 
     // Check if employee exists first
     const existingEmployee = await clientdb.users.findUnique({
@@ -412,6 +416,7 @@ export class EmployeeService {
         await prisma.userRole.create({
           data: {
             userId: id,
+            clientId: tenantClientId,
             roleTemplateId: newRoleTemplate.id,
             assignedBy: currentUserId,
           },
@@ -482,6 +487,7 @@ export class EmployeeService {
         if (finalPermissions.length > 0) {
           const permissionData = finalPermissions.map((permission) => ({
             userId: id,
+            clientId: tenantClientId,
             resource: permission.resource,
             actions: [permission.action], // Store as array for consistency
             storeId: permission.storeId || null,
@@ -509,6 +515,7 @@ export class EmployeeService {
           const storeAssignmentData = validatedStoreIds.map((storeId) => ({
             userId: id,
             storeId,
+            clientId: tenantClientId,
           }));
 
           // Use createMany for better performance
@@ -882,6 +889,7 @@ export class EmployeeService {
       await prisma.userRole.create({
         data: {
           userId: newUser.id,
+          clientId: req.user.clientId,
           roleTemplateId: roleTemplate.id,
           assignedBy: req.user.id,
         },
@@ -908,6 +916,7 @@ export class EmployeeService {
           const storeAssignments = validStoreIds.map((storeId) => ({
             userId: newUser.id,
             storeId,
+            clientId: req.user.clientId,
           }));
 
           // Create store assignments one by one to avoid transaction issues
@@ -938,6 +947,7 @@ export class EmployeeService {
     if (roleTemplatePermissions.length > 0) {
       const permissionData = roleTemplatePermissions.map((permission) => ({
         userId: user.id,
+        clientId: req.user.clientId,
         resource: permission.resource,
         actions: [permission.action],
         storeId: permission.storeId || null,
@@ -1024,6 +1034,7 @@ export class EmployeeService {
   async updateStoreAssignments(employeeId: string, storeIds: string[]) {
     // Get the tenant-specific Prisma client
     const clientdb = await this.tenantContext.getPrismaClient();
+    const { clientId: tenantClientId2 } = this.tenantContext.getTenantInfo() as { clientId: string };
 
     // Check if employee exists
     const employee = await clientdb.users.findUnique({
@@ -1063,6 +1074,7 @@ export class EmployeeService {
               data: {
                 userId: employeeId,
                 storeId,
+                clientId: tenantClientId2,
               },
             });
           } catch (error) {

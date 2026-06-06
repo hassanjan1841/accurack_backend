@@ -161,10 +161,12 @@ export class CustomerBalanceService {
       // STEP 2: If excess remains after clearing debts → store as credits
       if (operationalAmount > 0) {
         newCredits += operationalAmount;
+        const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
 
         await tx.balanceSheet.create({
           data: {
             customerId: dto.customerId,
+            clientId,
             transactionType: TransactionType.PAYMENT,
             amountPaid: operationalAmount,
             remainingAmount: 0,
@@ -242,10 +244,13 @@ export class CustomerBalanceService {
         throw new BadRequestException('Initial balance cannot be negative');
       }
 
+      const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+
       // Create balance sheet entry for initial balance
       const balanceEntry = await tx.balanceSheet.create({
         data: {
           customerId: dto.customerId,
+          clientId,
           transactionType: TransactionType.ADJUSTMENT,
           remainingAmount: dto.initialBalance,
           amountPaid: 0,
@@ -327,12 +332,14 @@ export class CustomerBalanceService {
     }
 
     // Fallback: Create new entry if no existing entry found or no saleId provided
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     return await prisma.balanceSheet.create({
       data: {
         customerId,
+        clientId,
         saleId,
         transactionType: TransactionType.REFUND,
-        remainingAmount: refundAmount, 
+        remainingAmount: refundAmount,
         amountPaid: 0,
         paymentStatus: PaymentStatus.REFUNDED,
         description: 'Refund processed',
