@@ -120,9 +120,16 @@ export class StoreService {
 
       const stores = await prisma.stores.findMany({
         where: {
-          ...(user.role === Role.super_admin
-            ? {} // Super admin sees ALL stores in tenant
-            : user.role === Role.employee
+          clientId: user.clientId, // Always scope to the current tenant
+          ...(user.role === Role.employee
+            ? {
+                users: {
+                  some: {
+                    userId: user.id,
+                  },
+                },
+              }
+            : user.role !== Role.super_admin
               ? {
                   users: {
                     some: {
@@ -130,14 +137,7 @@ export class StoreService {
                     },
                   },
                 }
-              : {
-                  clientId: user.clientId,
-                  users: {
-                    some: {
-                      userId: user.id,
-                    },
-                  },
-                }),
+              : {}),
         },
         select: {
           id: true,
@@ -303,24 +303,12 @@ export class StoreService {
     }
     // Build base where clause based on user role
     let where: any = {
-      ...(user.role === Role.super_admin
-        ? {}
-        : user.role === Role.employee
-          ? {
-              users: {
-                some: {
-                  userId: user.id,
-                },
-              },
-            }
-          : {
-              clientId: user.clientId,
-              users: {
-                some: {
-                  userId: user.id,
-                },
-              },
-            }),
+      clientId: user.clientId, // Always scope to the current tenant
+      ...(user.role === Role.employee
+        ? { users: { some: { userId: user.id } } }
+        : user.role !== Role.super_admin
+          ? { users: { some: { userId: user.id } } }
+          : {}),
       OR: [
         { name: { contains: query, mode: 'insensitive' } },
         { email: { contains: query, mode: 'insensitive' } },
@@ -367,9 +355,7 @@ export class StoreService {
       const existingStore = await prisma.stores.findFirst({
         where: {
           id: storeId,
-          ...(user.role === Role.super_admin
-            ? {}
-            : { clientId: user.clientId }),
+          clientId: user.clientId,
         },
       });
 
@@ -446,9 +432,7 @@ export class StoreService {
       const existingStore = await prisma.stores.findFirst({
         where: {
           id: storeId,
-          ...(user.role === Role.super_admin
-            ? {}
-            : { clientId: user.clientId }),
+          clientId: user.clientId,
         },
       });
 

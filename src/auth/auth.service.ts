@@ -1559,7 +1559,7 @@ export class AuthService {
     user: any,
     dto: CreateClientWithSuperAdminDto,
   ) {
-    await this.permissionsService.assignDefaultPermissions(user.id);
+    await this.permissionsService.assignDefaultPermissions(user.id, undefined, user.clientId);
 
     await this.mailService.sendMail({
       to: user.email,

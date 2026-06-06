@@ -404,9 +404,10 @@ export class CreateProductDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'Beverages', description: 'Category of the product' })
+  @ApiProperty({ example: 'Beverages', description: 'Category of the product', required: false })
   @IsString()
-  categoryId: string;
+  @IsOptional()
+  categoryId?: string;
 
   @ApiProperty({
     example: '1234567890123',

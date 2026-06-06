@@ -51,14 +51,15 @@ export class PermissionsService {
     return actions.every((action) => validActions.includes(action));
   }
   // Initialize default role templates
-  async initializeDefaultRoles(createdBy?: string): Promise<void> {
+  async initializeDefaultRoles(createdBy?: string, clientId?: string): Promise<void> {
     try {
       const clientdb = await this.tenantContext.getPrismaClient();
+      const tenantClientId = clientId || this.tenantContext.getTenantInfo().clientId;
       // If no createdBy provided, try to find the first super admin user
       let createdByUserId = createdBy;
       if (!createdByUserId) {
         const superAdminUser = await clientdb.users.findFirst({
-          where: { role: 'super_admin' },
+          where: { role: 'super_admin', ...(tenantClientId && { clientId: tenantClientId }) },
           select: { id: true },
         });
         createdByUserId = superAdminUser?.id || 'system';
@@ -66,22 +67,23 @@ export class PermissionsService {
 
       for (const [key, template] of Object.entries(DEFAULT_ROLE_TEMPLATES)) {
         const existing = await clientdb.roleTemplate.findFirst({
-          where: { name: template.name },
+          where: { name: template.name, ...(tenantClientId && { clientId: tenantClientId }) },
         });
 
-        // if (!existing) {
-        //   await clientdb.roleTemplate.create({
-        //     data: {
-        //       name: template.name,
-        //       description: template.description,
-        //       permissions: template.permissions,
-        //       isDefault: template.isDefault,
-        //       priority: template.priority,
-        //       createdBy: createdByUserId,
-        //     },
-        //   });
-        //   this.logger.log(`Created default role template: ${template.name}`);
-        // }
+        if (!existing) {
+          await clientdb.roleTemplate.create({
+            data: {
+              name: template.name,
+              description: template.description,
+              permissions: template.permissions,
+              isDefault: template.isDefault,
+              priority: template.priority,
+              createdBy: createdByUserId,
+              clientId: tenantClientId!,
+            },
+          });
+          this.logger.log(`Created default role template: ${template.name}`);
+        }
       }
     } catch (error) {
       this.logger.error('Failed to initialize default roles:', error);
@@ -1024,23 +1026,29 @@ export class PermissionsService {
   async assignDefaultPermissions(
     userId: string,
     storeId?: string,
+    clientId?: string,
   ): Promise<void> {
     try {
       const clientdb = await this.tenantContext.getPrismaClient();
+      // Resolve clientId: prefer explicitly passed value, then from tenant context
+      const resolvedClientId = clientId || this.tenantContext.getTenantInfo().clientId;
       // First check if user is super admin
       const user = await clientdb.users.findUnique({
         where: { id: userId },
-        select: { role: true, email: true },
+        select: { role: true, email: true, clientId: true },
       });
 
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
+      // Use user's clientId as final fallback
+      const effectiveClientId = resolvedClientId || user.clientId;
+
       // For super admins, assign the Super Admin role template directly
       if (user.role === 'super_admin') {
         const superAdminRole = await clientdb.roleTemplate.findFirst({
-          where: { name: 'Super Admin' },
+          where: { name: 'Super Admin', ...(effectiveClientId && { clientId: effectiveClientId }) },
         });
 
         if (superAdminRole) {
@@ -1059,7 +1067,7 @@ export class PermissionsService {
           return;
         } else {
           // If Super Admin role template doesn't exist, create it first
-          await this.initializeDefaultRoles(userId); // Pass user ID
+          await this.initializeDefaultRoles(userId, effectiveClientId); // Pass user ID and clientId
 
           const newSuperAdminRole = await clientdb.roleTemplate.findFirst({
             where: { name: 'Super Admin' },

@@ -840,17 +840,18 @@ export class EmployeeService {
     if (roleTemplateId) {
       roleTemplate = await this.validateRoleTemplate(clientdb, roleTemplateId);
     } else {
-      // Get default employee role template
+      // Get default role template (any isDefault template scoped to this client)
       roleTemplate = await clientdb.roleTemplate.findFirst({
         where: {
-          name: { contains: 'employee' },
           isDefault: true,
+          clientId: req.user.clientId,
         },
+        orderBy: { priority: 'asc' },
       });
 
       if (!roleTemplate) {
         throw new BadRequestException(
-          'Default employee role template not found',
+          'Default employee role template not found. Please ensure role templates are initialized for this client.',
         );
       }
     }

@@ -293,7 +293,7 @@ export class CreateClientWithSuperAdminDto {
     description: 'Company/Client name',
     example: 'Acme Corporation',
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   companyName: string;
 

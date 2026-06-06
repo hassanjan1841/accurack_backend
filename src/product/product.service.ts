@@ -353,12 +353,12 @@ export class ProductService {
         sku: createProductDto.sku || null,
         msaCategoryCode: createProductDto.msaCategoryCode || null,
         itemQuantity: createProductDto.itemQuantity,
-        msrpPrice: createProductDto.msrpPrice,
+        msrpPrice: createProductDto.msrpPrice ?? 0,
         minimumSellingQuantity: Number(createProductDto.minimumSellingQuantity),
-        singleItemSellingPrice: createProductDto.singleItemSellingPrice,
-        singleItemCostPrice: createProductDto.singleItemCostPrice,
-        discountAmount: createProductDto.discountAmount,
-        percentDiscount: createProductDto.percentDiscount,
+        singleItemSellingPrice: createProductDto.singleItemSellingPrice ?? 0,
+        singleItemCostPrice: createProductDto.singleItemCostPrice ?? 0,
+        discountAmount: createProductDto.discountAmount ?? 0,
+        percentDiscount: createProductDto.percentDiscount ?? 0,
         clientId: createProductDto.clientId,
         storeId: createProductDto.storeId,
         hasVariants: createProductDto.hasVariants || false,
@@ -402,8 +402,9 @@ export class ProductService {
     } catch (error: any) {
       console.log('Error creating product:', error);
       if (error.code === 'P2003') {
+        const field = error.meta?.field_name || 'unknown field';
         throw new BadRequestException(
-          'Invalid clientId or storeId - referenced record does not exist',
+          `Foreign key constraint failed on field: ${field}. Ensure clientId, storeId, categoryId, and supplierId all reference existing records.`,
         );
       }
       throw error;
