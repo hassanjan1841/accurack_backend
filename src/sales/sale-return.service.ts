@@ -266,15 +266,17 @@ export class SaleReturnService {
 
     const skip = (page - 1) * limit;
 
+    const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
+
     const where: any = {
+      clientId,
       AND: [{ sale: { storeId } }],
     };
 
     if (returnCategory) {
       where.AND.push({ returnCategory });
     }
-
-    const prisma = await this.tenantContext.getPrismaClient();
 
     const [returns, totalCount] = await Promise.all([
       prisma.saleReturn.findMany({

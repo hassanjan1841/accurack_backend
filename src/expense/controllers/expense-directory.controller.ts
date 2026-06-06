@@ -113,7 +113,7 @@ export class ExpenseDirectoryController {
   @ApiResponse({ status: 404, description: 'Directory not found' })
   async getDirectoriesById(@Param('id') id: string, @Request() req: any) {
     return this.handleServiceOperation(
-      () => this.expenseDirectoryService.getDirectoryChildren(id),
+      () => this.expenseDirectoryService.getDirectoryChildren(id, req.user),
       'Directories retrieved successfully',
       200,
     );

@@ -12,11 +12,13 @@ export class DashboardService {
 
   async getRevenueSummary(query: RevenueSummaryQueryDto): Promise<RevenueSummaryResponseDto> {
     const prisma = await this.tenantContext.getPrismaClient();
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     const { storeId, dateFrom, dateTo } = query;
 
     // Build where clause for sales
-    const where: any = { 
+    const where: any = {
       storeId,
+      clientId,
       confirmation: 'CONFIRMED' // Only include confirmed sales
       // status filter removed to show all statuses (PENDING, COMPLETED, CONFIRMED, etc.)
     };
@@ -96,7 +98,7 @@ export class DashboardService {
     
     // Check if ANY sales exist in this store
     const allSalesInStore = await prisma.sales.findMany({
-      where: { storeId },
+      where: { storeId, clientId },
       select: { id: true, createdAt: true, totalAmount: true, status: true, confirmation: true }
     });
     console.log(`\n=== ALL SALES IN STORE (${storeId}) ===`);

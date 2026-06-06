@@ -82,8 +82,8 @@ export class CustomerBalanceService {
     const prisma = await this.tenantContext.getPrismaClient();
 
     return await prisma.$transaction(async (tx) => {
-      const store = await prisma.stores.findUnique({
-        where: { id: dto.storeId },
+      const store = await prisma.stores.findFirst({
+        where: { id: dto.storeId, clientId: this.tenantContext.getTenantInfo().clientId! },
       });
       if (!store) {
         throw new BadRequestException('Invalid storeId - store does not exist');
@@ -224,8 +224,8 @@ export class CustomerBalanceService {
 
     return await prisma.$transaction(async (tx) => {
       // Validate that store exists
-      const store = await prisma.stores.findUnique({
-        where: { id: dto.storeId },
+      const store = await prisma.stores.findFirst({
+        where: { id: dto.storeId, clientId: this.tenantContext.getTenantInfo().clientId! },
       });
       if (!store) {
         throw new BadRequestException('Invalid storeId - store does not exist');

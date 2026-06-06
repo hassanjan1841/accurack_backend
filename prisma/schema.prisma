@@ -86,7 +86,7 @@ model Users {
   createdAt                 DateTime              @default(now())
   updatedAt                 DateTime              @updatedAt
   businessId                String?
-  employeeCode              String?               @unique
+  employeeCode              String?
   position                  String?
   department                String?
   phone                     String?
@@ -118,6 +118,8 @@ model Users {
   expenseEntriesCreated     ExpenseEntry[]        @relation("ExpenseEntryCreator") // Add this
   expenseEntriesApproved    ExpenseEntry[]        @relation("ExpenseEntryApprover") // Add this
   saleDraft                 SalesDraft[]
+
+  @@unique([employeeCode, clientId])
 }
 
 model Stores {
@@ -363,7 +365,7 @@ model Invoice {
   saleId          String
   customerId      String
   businessId      String
-  invoiceNumber   String        @unique
+  invoiceNumber   String
   customerName    String
   customerPhone   String
   customerMail    String?
@@ -391,6 +393,8 @@ model Invoice {
   sale            Sales         @relation(fields: [saleId], references: [id])
   clientId        String
   client          Clients       @relation(fields: [clientId], references: [id])
+
+  @@unique([invoiceNumber, clientId])
 }
 
 model CustomField {

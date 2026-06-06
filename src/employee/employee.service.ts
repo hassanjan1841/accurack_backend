@@ -233,9 +233,11 @@ export class EmployeeService {
     // Get the tenant-specific Prisma client
     const clientdb = await this.tenantContext.getPrismaClient();
 
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     const employees = await clientdb.users.findMany({
       where: {
         role: 'employee',
+        clientId,
       },
       include: {
         permissions: true,
@@ -279,10 +281,12 @@ export class EmployeeService {
     // Get the tenant-specific Prisma client
     const clientdb = await this.tenantContext.getPrismaClient();
 
+    const { clientId } = this.tenantContext.getTenantInfo() as { clientId: string };
     const employee = await clientdb.users.findFirst({
       where: {
         id,
         role: 'employee',
+        clientId,
       },
       include: {
         stores: {

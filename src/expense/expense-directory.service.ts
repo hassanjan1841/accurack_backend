@@ -51,8 +51,8 @@ export class ExpenseDirectoryService {
             });
 
             if (current.parentId) {
-                const parent = await prismaClient.expenseDirectory.findUnique({
-                    where: { id: current.parentId },
+                const parent = await prismaClient.expenseDirectory.findFirst({
+                    where: { id: current.parentId, clientId: user.clientId },
                 });
                 current = parent; // parent could be null, which is fine for the loop
             } else {
@@ -63,12 +63,12 @@ export class ExpenseDirectoryService {
         return path;
     }
 
-    async getDirectoryChildren(id: string) {
+    async getDirectoryChildren(id: string, user: any) {
         const prisma = this.tenantContext.getPrismaClient();
         const prismaClient = await prisma;
 
-        const directory = await prismaClient.expenseDirectory.findUnique({
-            where: { id },
+        const directory = await prismaClient.expenseDirectory.findFirst({
+            where: { id, clientId: user.clientId },
             include: {
                 children: true,
                 sheets: true,
