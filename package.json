@@ -48,7 +48,10 @@
     "prisma:studio": "npx prisma studio",
     "prisma:all": "npx prisma db push && npx prisma generate && npx prisma migrate dev",
     "git:latest": "git fetch --all && git reset --hard origin/main",
-    "git:latest:dev": "git fetch --all && git reset --hard origin/dev"
+    "git:latest:dev": "git fetch --all && git reset --hard origin/dev",
+    "seed:demo": "node prisma/seed-demo.mjs",
+    "dev:token": "node scripts/mint-dev-token.mjs",
+    "setup:local": "bash scripts/setup-local.sh"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -133,5 +136,8 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.34.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed-demo.mjs"
   }
 }
